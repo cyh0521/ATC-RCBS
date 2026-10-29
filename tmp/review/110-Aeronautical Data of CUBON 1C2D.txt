@@ -1,0 +1,34 @@
+WAYPOINT LIST (WGS84) 
+CUBON ONE CHARLIE RNAV ARRIVAL (RWY06) 
+CUBON TWO DELTA RNAV ARRIVAL (RWY24) 
+Waypoint Name Latitude Longitude Waypoint Name Latitude Longitude 
+CUBON 235702.40N 1185726.39E POSTY 241048.70N 1185251.30E 
+SPICA 241543.82N 1182141.78E MELOG 242401.60N 1183039.89E 
+Seq No 
+Path 
+Termi- 
+nator 
+Fix 
+Identifier 
+(Waypoint 
+Name) 
+Fly 
+Over Course °M (°T) 
+Turn 
+Direction 
+Altitude 
+(ft) 
+Speed 
+Limit(kt) 
+Vertical 
+Angle 
+Navigation 
+Specification 
+CUBON ONE CHARLIE RNAV ARRIVAL (RWY06) 
+01 IF CUBON - - - - - - RNAV 1 
+02 TF SPICA - 304(299.79) - +4000 - - RNAV 1 
+CUBON TWO DELTA RNAV ARRIVAL (RWY24) 
+01 IF CUBON - - - - - - RNAV 1 
+02 TF POSTY - 347(343.02) - +5000 - - RNAV 1 
+03 TF MELOG - 307(303.09) - +2000 - - RNAV 1 
+. 

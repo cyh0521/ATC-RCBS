@@ -1,0 +1,2877 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATC · 金門尚義 RCBS · v52</title>
+<script src="taxi_config.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Baloo+2:wght@600;700;800&display=swap');
+
+:root{
+  --sky:#e8f4fd;
+  --sky2:#d0e8f8;
+  --sky3:#b8dcf0;
+  --ocean:#0078c8;
+  --ocean2:#005a9e;
+  --teal:#00a8b8;
+  --teal2:#007a88;
+  --grass:#00a060;
+  --grass2:#007848;
+  --sand:#f5a800;
+  --sand2:#c88000;
+  --cloud:#ffffff;
+  --storm:#e84060;
+  --storm2:#b82840;
+  --navy:#102040;
+  --navy2:#182850;
+  --slate:#486080;
+  --fog:#8098b0;
+  --mist:#b8c8d8;
+  --panel:rgba(255,255,255,0.92);
+  --t1:#102040;
+  --t2:#486080;
+  --t3:#8098b0;
+  --mono:'JetBrains Mono',monospace;
+  --disp:'Baloo 2',cursive;
+  --ui:'Nunito',sans-serif;
+  --left-w:420px;
+  --top-h:60vh;
+  --cmd-h:58px;
+  --r:14px;
+  --r2:10px;
+  --shadow:0 4px 20px rgba(16,32,64,0.10);
+  --shadow2:0 8px 32px rgba(16,32,64,0.15);
+}
+
+@keyframes popIn{from{opacity:0;transform:scale(0.95) translateY(4px);}to{opacity:1;transform:scale(1) translateY(0);}}
+@keyframes chSlide{from{opacity:0;transform:translateX(-6px);}to{opacity:1;transform:translateX(0);}}
+@keyframes reqBlink{
+  0%,100%{background:var(--storm);box-shadow:0 2px 12px rgba(232,64,96,0.4);}
+  50%{background:rgba(232,64,96,0.25);box-shadow:none;}
+}
+@keyframes depGlow{0%,100%{box-shadow:var(--shadow);}50%{box-shadow:0 4px 20px rgba(245,168,0,0.25);}}
+@keyframes arrGlow{0%,100%{box-shadow:var(--shadow);}50%{box-shadow:0 4px 20px rgba(0,168,184,0.25);}}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-2px);}}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  background:linear-gradient(160deg,var(--sky) 0%,var(--sky2) 50%,var(--sky3) 100%);
+  color:var(--t1);font-family:var(--ui);
+  width:100vw;height:100vh;
+  display:grid;
+  grid-template-columns:var(--left-w) 1fr;
+  grid-template-rows:var(--top-h) var(--cmd-h) 1fr;
+  overflow:hidden;user-select:none;
+  gap:8px;padding:8px;
+}
+
+/* 裝飾性雲朵（背景） */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 200px 80px at 10% 15%, rgba(255,255,255,0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 150px 60px at 85% 8%, rgba(255,255,255,0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 180px 70px at 60% 90%, rgba(255,255,255,0.3) 0%, transparent 70%);
+}
+
+#left-col{
+  grid-column:1;grid-row:1/4;
+  display:grid;grid-template-rows:var(--top-h) 1fr;
+  gap:8px;
+}
+
+/* ASR */
+#asr-wrap{
+  background:#060e1a;border-radius:var(--r);
+  overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:var(--shadow2),0 0 0 3px rgba(0,120,200,0.12);
+  position:relative;
+}
+#asr-wrap::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,var(--ocean),var(--teal),var(--grass),var(--sand));
+  border-radius:var(--r) var(--r) 0 0;z-index:10;
+}
+canvas#minimap{display:block;flex:1;min-height:0;width:100%;position:relative;z-index:2;margin-top:4px;}
+.mm-title{
+  position:absolute;top:12px;left:10px;z-index:10;
+  font-family:var(--disp);font-size:13px;
+  color:rgba(100,220,255,0.9);letter-spacing:1px;font-weight:700;
+}
+.asr-ctrl-bar{
+  display:flex;align-items:center;gap:5px;padding:6px 8px;flex-shrink:0;
+  background:rgba(8,18,34,0.95);border-top:2px solid rgba(0,120,200,0.2);
+  z-index:10;flex-wrap:wrap;border-radius:0 0 calc(var(--r)-2px) calc(var(--r)-2px);
+}
+.asr-btn{
+  font-family:var(--ui);font-size:10px;font-weight:700;padding:4px 10px;
+  background:rgba(0,120,200,0.15);border:1.5px solid rgba(0,120,200,0.4);
+  color:rgba(100,200,255,0.9);border-radius:20px;cursor:pointer;transition:all .15s;
+}
+.asr-btn:hover{background:rgba(0,120,200,0.28);transform:translateY(-1px);}
+.asr-btn.off{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.3);}
+.asr-popup-btn{
+  margin-left:auto;font-family:var(--ui);font-size:10px;font-weight:700;padding:4px 10px;
+  background:rgba(0,160,96,0.15);border:1.5px solid rgba(0,160,96,0.4);
+  color:rgba(80,220,160,0.9);border-radius:20px;cursor:pointer;transition:all .15s;
+}
+.asr-popup-btn:hover{background:rgba(0,160,96,0.28);transform:translateY(-1px);}
+.asr-inline-legend{display:flex;align-items:center;gap:8px;margin:0 4px;}
+.asr-leg-item{display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,0.3);white-space:nowrap;}
+.asr-leg-dash{width:14px;height:0;border-top:1.5px dashed;flex-shrink:0;}
+
+/* COMM */
+#ch-col{
+  background:var(--panel);border-radius:var(--r);
+  overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:var(--shadow2),0 0 0 2px rgba(0,168,184,0.12);
+  position:relative;
+}
+#ch-col::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--teal),var(--ocean));
+  z-index:1;
+}
+#ch-header{
+  padding:8px 12px 7px;
+  border-bottom:2px solid var(--sky2);
+  font-family:var(--disp);font-size:12px;color:var(--navy);
+  letter-spacing:1px;font-weight:700;flex-shrink:0;
+  background:linear-gradient(90deg,rgba(0,168,184,0.06) 0%,transparent 100%);
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:3px;
+}
+.ch-live-badges{display:flex;gap:5px;align-items:center;}
+.ch-live-badge{
+  font-family:var(--mono);font-size:8px;font-weight:600;
+  padding:2px 7px;border-radius:10px;
+}
+.ch-live-badge.twr{color:white;background:var(--ocean);}
+.ch-live-badge.gnd{color:white;background:var(--sand);}
+.ch-live-badge.app{color:white;background:var(--teal);}
+#ch-log{flex:1;overflow-y:auto;padding:4px 0;min-height:0;display:flex;flex-direction:column;}
+#ch-log::-webkit-scrollbar{width:4px;}
+#ch-log::-webkit-scrollbar-thumb{background:var(--mist);border-radius:2px;}
+.ch-entry{display:grid;grid-template-columns:46px 1fr;border-bottom:1px solid var(--sky2);transition:background .12s;}
+.ch-entry:hover{background:var(--sky);}
+.ch-entry.new-entry{animation:chSlide .2s ease;}
+.ch-entry-badge{display:flex;align-items:flex-start;justify-content:center;padding:7px 0 5px;}
+.ch-badge-sq{
+  display:flex;align-items:center;justify-content:center;
+  width:32px;height:20px;flex-shrink:0;border-radius:6px;
+  font-family:var(--ui);font-size:9px;font-weight:800;color:white;
+}
+.ch-badge-sq.twr{background:var(--ocean);}
+.ch-badge-sq.gnd{background:var(--sand);}
+.ch-badge-sq.app{background:var(--teal);}
+.ch-badge-sq.atis{background:var(--slate);}
+.ch-badge-sq.ac{background:var(--mist);color:var(--slate);}
+.ch-entry-msg{font-family:var(--mono);font-size:11.5px;line-height:1.6;word-break:break-all;padding:5px 8px 5px 3px;}
+.ch-entry-msg.twr-txt{color:var(--ocean2);}
+.ch-entry-msg.app-txt{color:var(--teal2);}
+.ch-entry-msg.gnd-txt{color:var(--sand2);}
+.ch-entry-msg.atis-txt{color:var(--slate);font-size:11px;}
+.ch-entry-msg.ac-txt{color:var(--navy);font-weight:600;}
+
+/* SMR */
+#smr-wrap{
+  grid-column:2;grid-row:1;
+  background:#050e1a;border-radius:var(--r);overflow:hidden;position:relative;
+  box-shadow:var(--shadow2),0 0 0 3px rgba(0,120,200,0.10);
+}
+canvas#radar{display:block;}
+.smr-label{
+  position:absolute;top:10px;left:12px;
+  font-family:var(--disp);font-size:13px;
+  color:rgba(100,220,255,0.9);letter-spacing:1px;font-weight:700;
+  pointer-events:none;z-index:5;
+}
+.smr-version{
+  position:absolute;top:10px;right:12px;
+  font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.25);
+  pointer-events:none;z-index:5;
+}
+
+/* CMD BAR */
+#cmd-bar{
+  grid-column:2;grid-row:2;
+  display:flex;align-items:center;gap:8px;padding:0 14px;
+  background:var(--panel);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden;
+}
+#cmd-label{
+  font-family:var(--disp);font-size:12px;color:var(--teal);
+  letter-spacing:1px;font-weight:700;white-space:nowrap;flex-shrink:0;
+}
+#cmd-btns{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;overflow-x:auto;flex:1;}
+#cmd-btns::-webkit-scrollbar{height:3px;}
+#cmd-btns::-webkit-scrollbar-thumb{background:var(--mist);border-radius:2px;}
+.cb{
+  background:white;
+  border:2px solid var(--mist);color:var(--t2);
+  font-family:var(--ui);font-size:11px;font-weight:700;
+  padding:7px 14px;border-radius:22px;
+  cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  box-shadow:0 2px 8px rgba(16,32,64,0.08);
+}
+.cb:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 6px 20px rgba(16,32,64,0.14);
+}
+.cb:active:not(:disabled){transform:translateY(0);box-shadow:var(--shadow);}
+.cb:disabled{opacity:.3;cursor:default;}
+.cb.seat-APP{border-color:var(--teal);color:var(--teal2);background:rgba(0,168,184,0.06);}
+.cb.seat-APP:hover:not(:disabled){background:rgba(0,168,184,0.12);border-color:var(--teal2);}
+.cb.seat-TWR{border-color:var(--ocean);color:var(--ocean2);background:rgba(0,120,200,0.06);}
+.cb.seat-TWR:hover:not(:disabled){background:rgba(0,120,200,0.12);border-color:var(--ocean2);}
+.cb.seat-GND{border-color:var(--sand);color:var(--sand2);background:rgba(245,168,0,0.06);}
+.cb.seat-GND:hover:not(:disabled){background:rgba(245,168,0,0.12);border-color:var(--sand2);}
+.cb.seat-DEL{border-color:var(--grass);color:var(--grass2);background:rgba(0,160,96,0.06);}
+.cb-seat-lbl{font-size:8px;font-weight:800;opacity:0.65;letter-spacing:0.5px;}
+.cb-seat-lbl.APP,.cb-seat-lbl.DEL{color:var(--teal);}
+.cb-seat-lbl.TWR{color:var(--ocean);}
+.cb-seat-lbl.GND{color:var(--sand2);}
+#cmd-wx{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;border-left:2px solid var(--sky2);padding-left:14px;}
+#cmd-wx-rwy{display:flex;gap:5px;align-items:center;}
+#cmd-wx-vals{display:flex;flex-direction:column;gap:2px;}
+#cmd-clock{
+  border-right:2px solid var(--sky2);padding-right:14px;
+  font-family:var(--mono);font-size:20px;font-weight:700;
+  color:var(--ocean);letter-spacing:2px;white-space:nowrap;
+  min-width:104px;text-align:center;flex-shrink:0;
+  font-variant-numeric:tabular-nums;
+}
+.rwy-lt{
+  width:40px;height:26px;border-radius:8px;border:2px solid;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;transition:all .4s;
+}
+.rwy-lt.on-green{background:#d0f8e8;border-color:var(--grass);color:var(--grass2);box-shadow:0 0 12px rgba(0,160,96,0.3);}
+.rwy-lt.on-amber{background:#fff3d0;border-color:var(--sand);color:var(--sand2);box-shadow:0 0 10px rgba(245,168,0,0.25);}
+.rwy-lt.off{background:var(--sky2);border-color:var(--mist);color:var(--fog);}
+.rwy-info{font-family:var(--mono);font-size:9px;color:var(--t3);}
+
+/* STRIPS */
+#strips-area{
+  grid-column:2;grid-row:3;
+  display:grid;grid-template-columns:1fr 200px 1fr;
+  gap:8px;overflow:hidden;min-height:0;
+}
+.strip-col{
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--panel);border-radius:var(--r);
+  box-shadow:var(--shadow);
+}
+.strip-col-hdr{
+  display:flex;align-items:center;gap:7px;padding:8px 14px;
+  font-family:var(--disp);font-size:12px;font-weight:800;
+  letter-spacing:1px;flex-shrink:0;border-radius:var(--r) var(--r) 0 0;
+}
+.hdr-dep{color:var(--sand2);background:linear-gradient(90deg,rgba(245,168,0,0.10) 0%,transparent 100%);border-bottom:3px solid rgba(245,168,0,0.2);}
+.hdr-arr{color:var(--teal2);background:linear-gradient(90deg,rgba(0,168,184,0.10) 0%,transparent 100%);border-bottom:3px solid rgba(0,168,184,0.2);}
+.strip-cnt{
+  font-size:10px;font-weight:800;padding:2px 8px;border-radius:12px;color:white;
+}
+.hdr-dep .strip-cnt{background:var(--sand);}
+.hdr-arr .strip-cnt{background:var(--teal);}
+.strip-list{flex:1;overflow-y:auto;padding:6px 8px;display:flex;flex-direction:column;gap:5px;}
+.strip-list::-webkit-scrollbar{width:4px;}
+.strip-list::-webkit-scrollbar-thumb{background:var(--mist);border-radius:2px;}
+.fs{
+  background:white;border:2px solid var(--sky2);border-radius:var(--r2);
+  padding:7px 10px;cursor:pointer;transition:all .16s;
+  border-left:5px solid transparent;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(16,32,64,0.06);
+  animation:popIn .18s ease;
+}
+.fs:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,32,64,0.12);}
+.fs.dep{border-left-color:var(--sand);}
+.fs.arr{border-left-color:var(--teal);}
+.fs.sel.dep{background:linear-gradient(135deg,#fff8e8 0%,#fff3d0 100%);border-color:rgba(245,168,0,0.3);box-shadow:0 4px 20px rgba(245,168,0,0.2);animation:depGlow 2s ease-in-out infinite;}
+.fs.sel.arr{background:linear-gradient(135deg,#e8f8ff 0%,#d0f0f8 100%);border-color:rgba(0,168,184,0.3);box-shadow:0 4px 20px rgba(0,168,184,0.2);animation:arrGlow 2s ease-in-out infinite;}
+.fs-top{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.fs-cs{font-family:var(--mono);font-size:14px;font-weight:700;}
+.dep .fs-cs{color:var(--sand2);}
+.arr .fs-cs{color:var(--teal2);}
+.fs-badge{font-size:8px;padding:2px 6px;border-radius:8px;font-weight:700;font-family:var(--ui);color:white;}
+.b-gnd{background:var(--sand);}
+.b-rwy{background:var(--storm);}
+.b-air{background:var(--ocean);}
+.b-app{background:var(--grass);}
+.fs-bot{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.fs-ty{font-size:10px;color:var(--fog);font-family:var(--mono);}
+.fs-route{font-size:10px;color:var(--t3);}
+.fs-pos{
+  font-size:10px;font-family:var(--mono);margin-left:auto;font-weight:600;
+  padding:2px 7px;border-radius:8px;
+}
+.fs-pos.gnd{color:var(--sand2);background:rgba(245,168,0,0.12);}
+.fs-pos.rwy{color:var(--storm2);background:rgba(232,64,96,0.10);}
+.fs-pos.air{color:var(--ocean2);background:rgba(0,120,200,0.10);}
+.fs-pos.app{color:var(--grass2);background:rgba(0,160,96,0.10);}
+@keyframes reqBlink{
+  0%,100%{background:var(--storm);color:white;box-shadow:0 2px 10px rgba(232,64,96,0.4);}
+  50%{background:rgba(232,64,96,0.15);color:var(--storm);box-shadow:none;}
+}
+.req-tag{
+  font-size:8px;font-weight:800;padding:2px 6px;border-radius:8px;
+  background:var(--storm);color:white;font-family:var(--ui);
+  letter-spacing:.5px;display:inline-block;vertical-align:middle;margin-left:3px;
+  animation:reqBlink .5s ease-in-out infinite;
+}
+
+/* 詳情欄 */
+#ac-detail-col{
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--panel);border-radius:var(--r);box-shadow:var(--shadow);
+}
+#ac-img-box{
+  width:100%;aspect-ratio:3/2;background:var(--sky2);
+  border-bottom:2px solid var(--sky2);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;overflow:hidden;border-radius:var(--r) var(--r) 0 0;
+}
+#ac-img-box img{width:100%;height:100%;object-fit:cover;}
+#ac-img-placeholder{color:var(--fog);font-family:var(--ui);font-size:11px;font-weight:600;}
+#ac-info-text{padding:8px 10px;flex:1;overflow-y:auto;}
+#ac-cs-big{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--teal2);letter-spacing:1px;margin-bottom:2px;}
+#ac-airline-lbl{font-size:11px;color:var(--t2);margin-bottom:5px;font-weight:600;}
+.ac-row{font-size:11px;color:var(--t3);font-family:var(--mono);line-height:1.7;}
+.ac-row span{color:var(--t1);font-weight:600;}
+#ac-empty-msg{color:var(--fog);font-size:11px;text-align:center;padding:12px;font-family:var(--ui);line-height:1.8;font-weight:600;}
+#sb{display:none;}
+</style>
+</head>
+<body>
+
+<!-- ═══ LEFT COLUMN: ASR radar (top) + Channels (bottom) ═══ -->
+<div id="left-col">
+
+  <!-- 左上：ASR 雷達 -->
+  <div id="asr-wrap">
+    <canvas id="minimap"></canvas>
+    <div class="mm-title">ASR · 廣域進場雷達</div>
+
+    <!-- 圖例 -->
+    <!-- 控制列（含圖例）-->
+    <div class="asr-ctrl-bar" id="asr-ctrl-bar">
+      <button class="asr-btn" id="btn-routes" onclick="toggleRoutes()">隱藏航線</button>
+      <button class="asr-btn" id="btn-ac"     onclick="toggleAC()">隱藏班機</button>
+      <div class="asr-inline-legend">
+        <div class="asr-leg-item"><div class="asr-leg-dash" style="border-color:rgba(96,200,255,0.92)"></div><span>進場航線</span></div>
+        <div class="asr-leg-item"><div class="asr-leg-dash" style="border-color:rgba(255,90,180,0.92)"></div><span>離場航線</span></div>
+        <div class="asr-leg-item"><div class="asr-leg-dash" style="border-color:rgba(255,150,40,0.92)"></div><span>終端管制區域</span></div>
+      </div>
+      <button class="asr-popup-btn" onclick="openASRPopup()" title="放大檢視">⤢ 放大</button>
+    </div>
+  </div>
+
+  <!-- 左下：頻道通話記錄 -->
+  <div id="ch-col">
+    <div id="ch-header">
+      <span>COMM LOG · RCBS</span>
+      <div class="ch-live-badges">
+        <span class="ch-live-badge app" id="badge-app">APP 124.6</span>
+        <span class="ch-live-badge twr" id="badge-twr">TWR 118.0</span>
+        <span class="ch-live-badge gnd" id="badge-gnd">GND 126.2</span>
+      </div>
+    </div>
+    <div id="ch-log">
+      <div class="ch-entry">
+        <div class="ch-entry-badge"><span class="ch-badge-sq atis">ATIS</span></div>
+        <span class="ch-entry-msg atis-txt">甲 · RWY06 · QNH 1013 · 127.2</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RIGHT TOP: SMR Airport View ═══ -->
+<div id="smr-wrap">
+  <canvas id="radar"></canvas>
+  <div class="smr-label">SMR · 金門尚義 RCBS · 地面+近場</div>
+  <div class="smr-version">v52</div>
+</div>
+
+<!-- ═══ RIGHT MID: Command Bar ═══ -->
+<div id="cmd-bar">
+  <span id="cmd-label">CMD ▸</span>
+  <div id="cmd-btns">
+    <span style="color:var(--t3);font-size:9px;font-family:var(--mono);">— 點選航機後顯示指令 —</span>
+  </div>
+  <!-- 氣象 + 跑道狀態（靠右） -->
+  <div id="cmd-wx">
+    <div id="cmd-clock">
+      <span id="clock-sm">08:00:00</span>
+    </div>
+    <canvas id="wind-canvas" width="44" height="44" style="flex-shrink:0;width:44px;height:44px;"></canvas>
+    <div id="cmd-wx-rwy">
+      <span class="rwy-lt off" id="rwy06-light">06</span>
+      <span class="rwy-lt off" id="rwy24-light">24</span>
+    </div>
+    <div id="cmd-wx-vals">
+      <span id="wx-wind" style="font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:600">050°/12KT</span>
+      <span id="wx-qnh" style="font-family:var(--mono);font-size:11px;color:var(--sky);font-weight:600">QNH 1013</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RIGHT BOTTOM: Strips ═══ -->
+<div id="strips-area">
+
+  <!-- 離場管制條 -->
+  <div class="strip-col">
+    <div class="strip-col-hdr hdr-dep">
+      ↑ 離場 DEPARTURE
+      <span class="strip-cnt" id="cnt-dep">0</span>
+    </div>
+    <div class="strip-list" id="sdep"></div>
+  </div>
+
+  <!-- 中間：選中航班詳情 -->
+  <div id="ac-detail-col">
+    <div id="ac-img-box">
+      <div id="ac-img-placeholder">— 點選航機 —</div>
+    </div>
+    <div id="ac-info-text">
+      <div id="ac-empty-msg">選擇左側或右側<br>管制條以顯示詳情</div>
+    </div>
+  </div>
+
+  <!-- 進場管制條 -->
+  <div class="strip-col" style="border-right:none;">
+    <div class="strip-col-hdr hdr-arr">
+      ↓ 進場 ARRIVAL
+      <span class="strip-cnt" id="cnt-arr">0</span>
+    </div>
+    <div class="strip-list" id="sarr"></div>
+  </div>
+
+</div>
+
+
+<script>
+'use strict';
+// ══════════════════════════════════════
+// EVENT DELEGATION (survives DOM rebuilds)
+// ══════════════════════════════════════
+document.addEventListener('click', e=>{
+  // CMD button clicks
+  const btn=e.target.closest('button.cb[data-action]');
+  if(btn){
+    const acid=btn.dataset.acid;
+    const action=btn.dataset.action;
+    const ac=ACs[acid];
+    if(ac&&action){
+      // 立即清空指令列，防止重複按
+      const btnsEl=document.getElementById('cmd-btns');
+      if(btnsEl) btnsEl.innerHTML='<span style="color:var(--t3);font-size:11px;font-family:var(--mono)">— 執行中 —</span>';
+      execCmd(ac,action);
+      return;
+    }
+  }
+  // Strip card clicks
+  const strip=e.target.closest('.fs[data-acid]');
+  if(strip){
+    selectStrip(strip.dataset.acid);
+    return;
+  }
+});
+// ══════════════════════════════════════
+// CONSTANTS & CONFIG
+// ══════════════════════════════════════
+const GAME_SPEED  = 2;
+const NM_PX       = 16;
+const REPLY_DELAY = 1500;
+const TW_SPD      = 22; // ms/char
+
+let showRoutes = true; // ASR route display toggle
+let showAC = true;     // ASR aircraft display toggle
+
+function toggleRoutes(){
+  showRoutes=!showRoutes;
+  const btn=document.getElementById('btn-routes');
+  if(btn){ btn.textContent=showRoutes?'隱藏航線':'顯示航線'; btn.classList.toggle('off',!showRoutes); }
+}
+function toggleAC(){
+  showAC=!showAC;
+  const btn=document.getElementById('btn-ac');
+  if(btn){ btn.textContent=showAC?'隱藏班機':'顯示班機'; btn.classList.toggle('off',!showAC); }
+}
+function openASRPopup(){
+  const pw=800, ph=700;
+  const left=Math.round((screen.width-pw)/2), top=Math.round((screen.height-ph)/2);
+  const win=window.open('','ASR_POPUP',
+    `width=${pw},height=${ph},left=${left},top=${top},resizable=yes,scrollbars=no`);
+  if(!win) return;
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>ASR · 廣域進場雷達 · RCBS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#060e18;overflow:hidden;width:100vw;height:100vh;display:flex;flex-direction:column;}
+#popup-canvas-wrap{flex:1;position:relative;overflow:hidden;}
+canvas{display:block;width:100%;height:100%;}
+.pp-title{position:absolute;top:8px;left:10px;font-family:monospace;font-size:11px;
+  color:rgba(0,220,210,0.85);letter-spacing:2px;font-weight:700;pointer-events:none;}
+.pp-ctrl{display:flex;gap:6px;padding:6px 10px;background:rgba(4,10,22,0.9);
+  border-top:1px solid rgba(46,69,96,0.5);flex-wrap:wrap;align-items:center;}
+.pp-btn{font-family:monospace;font-size:10px;padding:4px 10px;
+  background:rgba(0,200,190,0.13);border:1px solid rgba(0,200,190,0.40);
+  color:#00c8be;border-radius:3px;cursor:pointer;}
+.pp-btn.off{background:rgba(30,45,65,0.4);border-color:#2e4560;color:#4a7090;}
+.pp-legend{display:flex;gap:14px;margin-left:auto;align-items:center;}
+.pp-leg{display:flex;align-items:center;gap:5px;font-family:monospace;font-size:9px;color:#90b8d8;}
+.pp-leg-line{width:22px;height:0;border-top:1.5px dashed;}
+</style></head><body>
+<div id="popup-canvas-wrap">
+  <canvas id="pp-canvas"></canvas>
+  <div class="pp-title">ASR · 廣域進場雷達 · RCBS</div>
+</div>
+<div class="pp-ctrl">
+  <button class="pp-btn" id="pp-routes" onclick="toggleR()">隱藏航線</button>
+  <button class="pp-btn" id="pp-ac"     onclick="toggleA()">隱藏班機</button>
+  <div class="pp-legend">
+    <div class="pp-leg"><div class="pp-leg-line" style="border-color:rgba(96,200,255,0.92)"></div>進場航線</div>
+    <div class="pp-leg"><div class="pp-leg-line" style="border-color:rgba(255,90,180,0.92)"></div>離場航線</div>
+    <div class="pp-leg"><div class="pp-leg-line" style="border-color:rgba(255,150,40,0.92)"></div>終端管制區域</div>
+  </div>
+</div>
+<script>
+let pShowR=true, pShowA=true;
+function toggleR(){pShowR=!pShowR;document.getElementById('pp-routes').textContent=pShowR?'隱藏航線':'顯示航線';document.getElementById('pp-routes').className='pp-btn'+(pShowR?'':' off');}
+function toggleA(){pShowA=!pShowA;document.getElementById('pp-ac').textContent=pShowA?'隱藏班機':'顯示班機';document.getElementById('pp-ac').className='pp-btn'+(pShowA?'':' off');}
+const cv=document.getElementById('pp-canvas');
+const ctx=cv.getContext('2d');
+function resize(){
+  const dpr=window.devicePixelRatio||1;
+  const wrap=document.getElementById('popup-canvas-wrap');
+  cv.width=Math.round(wrap.clientWidth*dpr);
+  cv.height=Math.round(wrap.clientHeight*dpr);
+  cv.style.width=wrap.clientWidth+'px';
+  cv.style.height=wrap.clientHeight+'px';
+  ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
+}
+window.addEventListener('resize',resize); resize();
+function loop(){
+  try{
+    const src=window.opener;
+    if(!src||src.closed){window.close();return;}
+    src.drawMinimapTo(ctx,cv.clientWidth,cv.clientHeight,pShowR,pShowA);
+  }catch(e){}
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+<\/script></body></html>`);
+  win.document.close();
+}
+
+// Runway crosswind limits (real-world simplified):
+// > 20kt crosswind component → close runway (amber warning at >15kt)
+const XW_AMBER = 15, XW_CLOSE = 20;
+
+// GS is now dynamic — computed from gOrig() on every draw call
+// This global is kept for backward compat but updated each frame via getGS()
+let GS = 0.24;
+function getGS(){ const g=gOrig(); GS=g.gs; return g.gs; }
+
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+// 座標系統 v38 — 純圖片像素座標
+// 圖片原始尺寸：2559 × 1100px
+// 所有位置直接對應 airport_view.jpg 像素
+// 比例尺：1.2817 px/m（由TWY A/B/C/D交叉點線性回歸求得，誤差±1px）
+// ══════════════════════════════════════
+const IMG_W = 2559, IMG_H = 1100;
+const PX_PER_M = TAXI_CONFIG.airport.px_per_m; // 像素/公尺
+
+// ── 跑道 ──
+const RWY_Y    = TAXI_CONFIG.airport.rwy_y;    // 跑道中心線 y（像素）
+const DTHR06   = { x: 60,   y: 614 };  // RWY06 位移入口
+const THR24    = { x: 2490, y: 614 };  // RWY24 入口
+const RWY_W_PX = Math.round(45 * PX_PER_M);  // 跑道寬度（像素）≈58px
+
+// ── TWY N ──
+const TWY_N_Y = TAXI_CONFIG.airport.twy_n_y; // TWY N 中心線 y（像素）
+
+// ── TWY 連接道 x（像素）──
+// ── 滑行道連接道：從 taxi_config.js 讀取 ──
+const CONN = Object.fromEntries(
+  Object.entries(TAXI_CONFIG.connectors).map(([k,v]) => [k, v.x])
+);
+
+// ── 等待點（TWY N 上）──
+// ── 等待點：從 TAXI_CONFIG 動態建立（支援 H-C/H-D 和 H-A/H-B）──
+const HOLDPOINTS = {};
+Object.entries(TAXI_CONFIG.holdpoints).forEach(([key, hp]) => {
+  const conn = TAXI_CONFIG.connectors[hp.connector];
+  HOLDPOINTS[key] = { x: conn.x, y: TWY_N_Y, label: hp.label, rwy: hp.rwy };
+});
+// 保留舊名相容
+const HOLD_06 = HOLDPOINTS['H-D'];
+const HOLD_24 = HOLDPOINTS['H-A'];
+
+// ── DTHR 回轉點（RWY06起飛用）──
+// 飛機滑至此處後做360°小迴轉朝東起飛
+const DTHR_TURNAROUND = { x: 80, y: RWY_Y };
+
+// ── 機位（圖片像素座標，機頭停止點）──
+// ── 機位：從 taxi_config.js 讀取 ──
+const GATES = Object.fromEntries(
+  Object.entries(TAXI_CONFIG.gates).map(([id,g]) => [id, {x:g.x, y:g.y, cat:g.cat}])
+);
+const ALL_GATES = Object.entries(GATES).map(([id,g])=>({id,...g}));
+
+// ── 設施（像素座標）──
+const TERMINAL = { x:2199, y:163 };
+const FIRE_STN = { x:1946, y:224 };
+
+// ── 座標轉換：圖片像素 → canvas 像素 ──
+// canvas 尺寸由 resize() 動態決定，縮放時保持 cover（以跑道中心為錨點）
+function imgToCv(ix, iy) {
+  const { sx, sy, ox, oy } = getImgTransform();
+  return { x: ox + ix * sx, y: oy + iy * sy };
+}
+let _imgTransform = null;
+function getImgTransform() {
+  if (_imgTransform &&
+      _imgTransform.cW === cW && _imgTransform.cH === cH) return _imgTransform;
+  // cover：維持圖片比例填滿canvas，以跑道中心線為垂直錨點
+  const sx = cW / IMG_W;
+  const sy = cH / IMG_H;
+  // 使用 cover（取較大縮放），但允許上下裁切
+  const s = Math.max(sx, sy);
+  const ox = (cW - IMG_W * s) / 2;
+  const oy = (cH - IMG_H * s) / 2;
+  _imgTransform = { sx:s, sy:s, ox, oy, cW, cH };
+  return _imgTransform;
+}
+
+// 每次 resize 清除快取
+const _origResize = typeof resize === 'function' ? resize : null;
+
+// 為相容舊程式碼提供 m2c 別名（部分 draw 函式仍用 m2c）
+// 注意：v38 起地面飛機直接用 imgToCv 定位
+function m2c(mx, my) { return imgToCv(mx, my); }
+function gOrig() { return { ox:0, oy:0, gs:getImgTransform().sx }; }
+function getGS() { return getImgTransform().sx; }
+GS = 1;
+
+// TWY_Y 與 RWY_LEN 設為相容舊物理引擎的虛擬值
+const TWY_Y   = TWY_N_Y;   // 等待點 y（像素）
+const RWY_LEN = THR24.x;   // 跑道長度（像素 x 方向，供滾行計算用）
+
+// ══════════════════════════════════════
+// WAYPOINTS — 官方 WGS84 精確換算（NM offset from ARP）
+// +x = East（東）, +y = North（北）
+// ══════════════════════════════════════
+const WPT = {
+  // SID 航點（官方 PDF 050/070）
+  BS001:      { x: 16.722, y:  -7.767 }, // 241758.00N 1184002.00E
+  BS002:      { x: -4.637, y:  -8.089 }, // 241738.68N 1181634.45E
+  INDIA:      { x: 27.117, y: -19.663 }, // 240604.23N 1185126.99E
+  CUBON:      { x: 32.571, y: -28.693 }, // 235702.40N 1185726.39E
+
+  // STAR 中間點（官方 PDF 110）
+  POSTY:      { x: 28.396, y: -14.922 }, // 241048.70N 1185251.30E
+  SPICA:      { x:  0.027, y: -10.003 }, // 241543.82N 1182141.78E
+  MELOG:      { x:  8.193, y:  -1.707 }, // 242401.60N 1183039.89E
+
+  // ILS RWY06 航點（官方 PDF 120/170）
+  SANDY:      { x: 11.613, y:  -8.737 }, // 241659.78N 1183425.31E (IAF)
+  SKIRT:      { x: -8.327, y:  -3.483 }, // IF, ICKM 9.7D，速限 220kt
+  FAP_06:     { x: -3.632, y:  -1.490 }, // FAP, ICKM 4.6D
+  RWY06_DTHR: { x: -0.613, y:  -0.307 }, // RWY06 位移入口 MAPt
+
+  // ILS RWY24 航點（官方 PDF 130）
+  AMTIK:      { x:  8.863, y:  -1.563 }, // IAF, BSN 9D / BS 104BRG
+  INDOK:      { x:  6.659, y:   2.780 }, // IF, ICSY 7.9D
+  FAP_24:     { x:  3.253, y:   1.334 }, // FAP, ICSY 4.2D，速限 230kt
+  RWY24_THR:  { x:  0.602, y:   0.307 }, // RWY24 入口
+
+  // RNP RWY06 航點（官方 PDF 160/170）
+  KNISH:      { x: -7.284, y:  -9.293 }, // 241626.43N 1181340.01E
+  KETCH:      { x: -9.524, y:  -4.812 }, // 242055.27N 1181112.39E (IF)
+  KEBAB:      { x: -5.070, y:  -2.558 }, // 242310.52N 1181605.91E (FAF)
+
+  // SPRAY 雷達引導終點
+  SPRAY_J:    { x:  2.6,   y: -14.8  },  // HDG 170° ~15NM
+  SPRAY_K:    { x: 14.8,   y:  -2.6  },  // HDG 100° ~15NM
+};
+
+// ── Helper: named waypoint copy ──
+const W = (name) => ({...WPT[name], name});
+
+// ══════════════════════════════════════
+// SID ROUTES（官方程序）
+// 所有 SID：離地後維持跑道航向直到通過 600ft
+// ══════════════════════════════════════
+const SID_ROUTES = {
+  // RWY06：通過 600ft 後右轉
+  'CUBON 1A': [W('BS001'), W('INDIA'), {...W('CUBON'), isFinal:true}],
+  'INDIA 1A': [W('BS001'), {...W('INDIA'), isFinal:true}],
+  'SANDY 1A': [{...W('SANDY'), spdMax:250, isFinal:true}],
+  'SPRAY 1J': [{...WPT.SPRAY_J, name:'SPRAY-J', isFinal:true}],
+  // RWY24：通過 600ft 後左轉
+  'CUBON 1B': [{...W('BS002'), spdMax:250}, {...W('CUBON'), isFinal:true}],
+  'INDIA 1B': [{...W('BS002'), spdMax:250}, {...W('INDIA'), isFinal:true}],
+  'SANDY 1B': [{...W('SANDY'), spdMax:240, isFinal:true}],
+  'SPRAY 1K': [{...WPT.SPRAY_K, name:'SPRAY-K', isFinal:true}],
+};
+
+// ══════════════════════════════════════
+// ARRIVAL ROUTES（官方 STAR + ILS）
+// altTarget 為航點最低高度限制
+// ══════════════════════════════════════
+const ARR_ROUTES = {
+  // ILS RWY06 via SANDY → SPICA → SKIRT → FAP_06
+  'ILS-SANDY-06': [
+    {...W('SANDY'), altTarget:4000, spdMax:220},
+    {...W('SPICA'), altTarget:3000},
+    {...W('SKIRT'), altTarget:2300, spdMax:220, isIF:true},
+    {...W('FAP_06'), altTarget:1500, isFF:true},
+    {...WPT.RWY06_DTHR, name:'RWY06', altTarget:0, isTHR:true},
+  ],
+  // CUBON 1C → ILS RWY06 via SPICA → SKIRT → FAP_06
+  'CUBON-1C-06': [
+    {...W('CUBON'), altTarget:8000},
+    {...W('SPICA'), altTarget:4000},
+    {...W('SKIRT'), altTarget:2300, spdMax:220, isIF:true},
+    {...W('FAP_06'), altTarget:1500, isFF:true},
+    {...WPT.RWY06_DTHR, name:'RWY06', altTarget:0, isTHR:true},
+  ],
+  // ILS RWY24 via AMTIK → INDOK → FAP_24
+  'ILS-AMTIK-24': [
+    {...W('AMTIK'), altTarget:4000, spdMax:230},
+    {...W('INDOK'), altTarget:3000, isIF:true},
+    {...W('FAP_24'), altTarget:1500, isFF:true},
+    {...WPT.RWY24_THR, name:'RWY24', altTarget:0, isTHR:true},
+  ],
+  // CUBON 2D → ILS RWY24 via POSTY → MELOG → INDOK → FAP_24
+  'CUBON-2D-24': [
+    {...W('CUBON'), altTarget:8000},
+    {...W('POSTY'), altTarget:5000},
+    {...W('MELOG'), altTarget:2000},
+    {...W('INDOK'), altTarget:3000, isIF:true},
+    {...W('FAP_24'), altTarget:1500, isFF:true},
+    {...WPT.RWY24_THR, name:'RWY24', altTarget:0, isTHR:true},
+  ],
+};
+const AIRPORT_ICAO = {
+  '松山':'RCSS','高雄':'RCKH','臺中':'RCMQ','臺南':'RCSQ',
+  '嘉義':'RCKU','澎湖':'RCQC','屏東':'RCDC','清泉崗':'RCMQ',
+  'RCBS':'RCBS 金門',
+};
+
+// ══════════════════════════════════════
+// AIRCRAFT PERFORMANCE TABLE (item 8)
+// Two base profiles: prop / jet
+// Fields: vs_climb (ft/min), vs_desc, vs_final, spd_liftoff (kt),
+//         spd_climb, spd_cruise, spd_approach, spd_land, turn_rate (deg/s)
+// ══════════════════════════════════════
+const AC_PERF = {
+  // ── Turboprop (ATR 72, Fokker 50, etc.) ──
+  prop: {
+    vs_climb:  1200, vs_desc:  1500, vs_final: 650,
+    spd_liftoff: 120, spd_climb: 170, spd_cruise: 240,
+    spd_approach: 200, spd_land: 130,
+    turn_rate: 3.0,
+  },
+  // ── Jet (B737, A320, etc.) ──
+  jet: {
+    vs_climb:  2000, vs_desc:  2000, vs_final: 800,
+    spd_liftoff: 155, spd_climb: 250, spd_cruise: 420,
+    spd_approach: 250, spd_land: 155,
+    turn_rate: 3.0,
+  },
+};
+// Map AC_TYPES category to perf profile
+function getPerf(ac){ return AC_PERF[AC_TYPES[ac.type]?.cat==='jet'?'jet':'prop'] || AC_PERF.prop; }
+const AC_TYPES = {
+  'ATR 72-600':  {imgKey:'ATR72-600',  cat:'turboprop', maxSpd:280},
+  'B737-800':    {imgKey:'B737-800',   cat:'jet',       maxSpd:460},
+  'A321-200':    {imgKey:'A321-200',   cat:'jet',       maxSpd:450},
+  'Fokker 50':   {imgKey:'F50',        cat:'turboprop', maxSpd:280},
+  'Beech 1900C': {imgKey:'B1900C',     cat:'turboprop', maxSpd:240},
+  'C-130H':      {imgKey:'C130H',      cat:'turboprop', maxSpd:330},
+  'Phenom 300':  {imgKey:'Phenom300',  cat:'jet',       maxSpd:350},
+};
+
+// ══════════════════════════════════════
+// BACKGROUND IMAGE — SMR
+// ══════════════════════════════════════
+let smrBgImg = null;
+let smrBgReady = false;
+(function(){
+  const img = new Image();
+  img.onload = () => { smrBgImg = img; smrBgReady = true; };
+  img.onerror = () => { smrBgReady = false; }; // 載入失敗則退回純色背景
+  img.src = '/image/airport_view.jpg';
+})();
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+const SCHED_START = 8*3600; // 08:00 班表開始時間
+let view='ground', gTime=SCHED_START, sel=null;
+let cLog=[], cFilt='ALL';
+let twQueue=[], twTimer=null;
+const ACs={};
+let nId=1;
+const wind={dir:50, spd:12}; // direction FROM, speed kt
+
+function rI(a,b){return a+Math.floor(Math.random()*(b-a));}
+
+function makeAC(o){
+  return {
+    id:'AC'+(nId++),
+    callsign:o.callsign, airline:o.airline,
+    type:o.type, cat:o.cat||'COM',
+    cmdStep:'WAIT_REQ',
+    gx:o.gx??2200, gy:o.gy??260,
+    gHdg:o.gHdg??0,   gSpd:0,  // 預設機頭朝北（停機坪方向）
+    taxiRoute:[], taxiIdx:0,
+    gate:o.gate||'N1', assignedRwy:null,
+    onRwy:false, rwyRollDist:0,
+    ax:0, ay:0, aHdg:90, aSpd:0,
+    altitude:0, targetAlt:0, targetHdg:null,
+    clearedILS:false,
+    landingCleared:false,
+    // 空中航路導航
+    airRoute:[], airRouteIdx:0,
+    assignedHold:null,        // 指派的等待點（'H-C','H-D','H-A','H-B'）
+    sid:o.sid||null,          // 指派的 SID 名稱
+    holdRwyHdg:true,          // 是否仍在維持跑道航向（未超過600ft）
+    destination:o.destination||'松山',
+    origin:o.origin||'RCBS',
+    depTime:o.depTime||'--:--',
+    arrTime:o.arrTime||'--:--',
+    waitTimer:0, pilotCalled:false, pilotCalled2:false,
+    fl:o.fl||180,
+    reqFlash:false,
+    handoffPending:false,
+    accHandoffDone:false,
+    rwyAssigned:false,
+    pendingArrRoute:null,
+    previewRwy:null,
+  };
+}
+
+// ══════════════════════════════════════
+// CANVAS
+// ══════════════════════════════════════
+const cv = document.getElementById('radar');
+const cx = cv.getContext('2d');
+let cW=0, cH=0;
+
+const mmCv = document.getElementById('minimap');
+const mmCx = mmCv ? mmCv.getContext('2d') : null;
+let mmW=0, mmH=0;
+
+function resize(){
+  const dpr=window.devicePixelRatio||1;
+
+  // SMR radar canvas — fills #smr-wrap
+  const smrWrap=document.getElementById('smr-wrap');
+  if(smrWrap){
+    cW=smrWrap.clientWidth; cH=smrWrap.clientHeight;
+    cv.width=Math.round(cW*dpr); cv.height=Math.round(cH*dpr);
+    cv.style.width=cW+'px'; cv.style.height=cH+'px';
+    cx.setTransform(1,0,0,1,0,0);
+    cx.scale(dpr,dpr);
+    // GS is now dynamic via getGS() / gOrig()
+  }
+
+  // ASR minimap canvas — flex:1 in #asr-wrap, auto excludes ctrl-bar
+  if(mmCv){
+    const asrWrap=document.getElementById('asr-wrap');
+    if(asrWrap){
+      mmW=mmCv.clientWidth||asrWrap.clientWidth;
+      mmH=mmCv.clientHeight||200;
+      // Fallback: subtract ctrl bar if clientHeight not yet set
+      if(!mmH||mmH===asrWrap.clientHeight){
+        const ctrlBar=document.getElementById('asr-ctrl-bar');
+        mmH=asrWrap.clientHeight-(ctrlBar?ctrlBar.offsetHeight:30);
+      }
+      mmCv.width=Math.round(mmW*dpr); mmCv.height=Math.round(mmH*dpr);
+      mmCv.style.width=mmW+'px'; mmCv.style.height=mmH+'px';
+      if(mmCx){mmCx.setTransform(1,0,0,1,0,0); mmCx.scale(dpr,dpr);}
+    }
+  }
+}
+window.addEventListener('resize',()=>{ resize(); });
+
+// gOrig/m2c 已由新座標系統取代，見上方 imgToCv / getImgTransform
+function aOrig(){return{ox:cW/2,oy:cH/2};}
+function nm2c(nx,ny){const{ox,oy}=aOrig();return{x:ox+nx*NM_PX,y:oy-ny*NM_PX};}
+
+// ══════════════════════════════════════
+// WIND INDICATOR
+// ══════════════════════════════════════
+function drawWindIndicator(){
+  const wc=document.getElementById('wind-canvas');
+  if(!wc)return;
+  const wctx=wc.getContext('2d');
+  const W=44, R=17, cx2=22, cy2=22;
+  wctx.clearRect(0,0,W,W);
+  wctx.strokeStyle='rgba(80,160,220,0.6)'; wctx.lineWidth=1.2;
+  wctx.beginPath(); wctx.arc(cx2,cy2,R,0,Math.PI*2); wctx.stroke();
+  wctx.strokeStyle='rgba(80,160,220,0.3)'; wctx.lineWidth=0.8;
+  wctx.beginPath(); wctx.arc(cx2,cy2,R*0.5,0,Math.PI*2); wctx.stroke();
+  // Cardinal letters — N at top, E right, S bottom, W left
+  wctx.fillStyle='rgba(120,190,240,0.90)'; wctx.font='bold 6px Orbitron,monospace';
+  wctx.textAlign='center'; wctx.textBaseline='middle';
+  wctx.fillText('N',cx2,cy2-R+4);
+  wctx.fillText('S',cx2,cy2+R-4);
+  wctx.fillText('E',cx2+R-4,cy2);
+  wctx.fillText('W',cx2-R+4,cy2);
+  // Wind arrow: points in the direction wind is GOING TO (from = dir, to = dir+180)
+  // Compass bearing → canvas angle: rad = (bearing - 90) * π/180
+  // Wind FROM 050 → arrow points TOWARD 230°
+  const toDir = (wind.dir + 180) % 360;
+  const rad = (toDir - 90) * Math.PI / 180;
+  // Tail (origin side) and head (arrow tip)
+  const tailX = cx2 - Math.cos(rad) * (R * 0.55);
+  const tailY = cy2 - Math.sin(rad) * (R * 0.55);
+  const headX = cx2 + Math.cos(rad) * (R - 3);
+  const headY = cy2 + Math.sin(rad) * (R - 3);
+  wctx.strokeStyle='#ffb830'; wctx.lineWidth=2; wctx.lineCap='round';
+  wctx.beginPath(); wctx.moveTo(tailX, tailY); wctx.lineTo(headX, headY); wctx.stroke();
+  // Arrowhead at head — use rad for direction
+  const aSize = 5;
+  wctx.fillStyle='#ffb830';
+  wctx.beginPath();
+  wctx.moveTo(headX, headY);
+  wctx.lineTo(headX - Math.cos(rad - 0.45)*aSize, headY - Math.sin(rad - 0.45)*aSize);
+  wctx.lineTo(headX - Math.cos(rad + 0.45)*aSize, headY - Math.sin(rad + 0.45)*aSize);
+  wctx.closePath(); wctx.fill();
+}
+
+function updateRunwayLights(){
+  function xwind(rwyHdg){
+    const diff=(wind.dir - rwyHdg + 360)%360;
+    return Math.abs(Math.sin(diff*Math.PI/180)*wind.spd);
+  }
+  const xw06=xwind(63), xw24=xwind(243);
+  function applyState(el,xw){
+    if(!el)return;
+    el.classList.remove('on-green','on-amber','off');
+    if(xw>XW_CLOSE) el.classList.add('off');
+    else if(xw>XW_AMBER) el.classList.add('on-amber');
+    else el.classList.add('on-green');
+  }
+  applyState(document.getElementById('rwy06-light'),xw06);
+  applyState(document.getElementById('rwy24-light'),xw24);
+  // wind display
+  const wEl=document.getElementById('wx-wind');
+  if(wEl) wEl.textContent=String(wind.dir).padStart(3,'0')+'°/'+wind.spd+'KT';
+}
+
+// ══════════════════════════════════════
+// DRAW GROUND
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+// DRAW GROUND — v38 純圖片背景
+// ══════════════════════════════════════
+function drawGround(){
+  _imgTransform = null;
+  GS = getImgTransform().sx;
+
+  if(smrBgReady && smrBgImg){
+    const {sx,sy,ox,oy} = getImgTransform();
+    cx.drawImage(smrBgImg, ox, oy, IMG_W*sx, IMG_H*sy);
+  } else {
+    cx.fillStyle='#1a2a1a'; cx.fillRect(0,0,cW,cH);
+  }
+
+  // 機位圓點和等待點黃圈已移除
+
+  if(sel && ACs[sel] && ACs[sel].previewRwy){
+    const ac = ACs[sel];
+    const prev = getTaxiPreview(ac, ac.previewRwy);
+    const pCol = ac.previewRwy==='06' ? 'rgba(100,200,255,0.70)' : 'rgba(255,160,80,0.70)';
+    drawTaxiPreview(prev, pCol);
+  }
+  Object.values(ACs).forEach(ac=>{ if(isGnd(ac.cmdStep)) drawACGnd(ac); });
+}
+
+function drawHoldMarker(hp){
+  const p = imgToCv(hp.x, hp.y);
+  cx.strokeStyle='rgba(255,220,60,0.75)'; cx.lineWidth=1.5;
+  const r = Math.max(6, 8*GS);
+  cx.beginPath(); cx.arc(p.x,p.y,r,0,Math.PI*2); cx.stroke();
+  // 不顯示 H-D / H-A 標注
+}
+
+function drawGateMarker(g){
+  const p = imgToCv(g.x, g.y);
+  const cols = {
+    MIL:['rgba(180,40,40,0.72)','rgba(255,120,120,1)'],
+    COM:['rgba(20,140,70,0.72)','rgba(80,240,140,1)'],
+  };
+  const [fill] = cols[g.cat] || cols.COM;
+  const r = Math.max(4, 5*GS);
+  cx.fillStyle=fill;
+  cx.beginPath(); cx.arc(p.x,p.y,r,0,Math.PI*2); cx.fill();
+  // 不顯示機位編號
+}
+
+function lbl(x,y,t,col,sz,bold){
+  cx.save(); cx.fillStyle=col;
+  cx.font=(bold?'bold ':'')+sz+'px Share Tech Mono';
+  cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillText(t,x,y); cx.restore();
+}
+
+function rP(x,y,w,h){return[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];}
+function dPolyM(pts,fill,stroke,sw){
+  const cp=pts.map(p=>imgToCv(p[0],p[1]));
+  cx.beginPath(); cp.forEach((p,i)=>i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y)); cx.closePath();
+  if(fill!=='none'){cx.fillStyle=fill;cx.fill();}
+  if(stroke!=='none'&&sw>0){cx.strokeStyle=stroke;cx.lineWidth=sw;cx.stroke();}
+}
+function dPoly(pts,fill,stroke,sw){
+  const cp=pts.map(p=>imgToCv(p[0],p[1]));
+  cx.beginPath(); cp.forEach((p,i)=>i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y)); cx.closePath();
+  if(fill!=='none'){cx.fillStyle=fill;cx.fill();}
+  if(stroke!=='none'&&sw>0){cx.strokeStyle=stroke;cx.lineWidth=sw;cx.stroke();}
+}
+
+
+// ══════════════════════════════════════
+// DRAW AIR
+// ══════════════════════════════════════
+function drawAir(){
+  const{ox,oy}=aOrig();
+  cx.fillStyle='#070f1c'; cx.fillRect(0,0,cW,cH);
+  // Sea tint
+  cx.fillStyle='rgba(5,14,32,0.55)'; cx.fillRect(0,0,cW,cH);
+  // ── Land masses — coordinates from AIP chart geography ──
+  // RCBS ARP = (0,0). +x=East, +y=North (NM)
+  // Big Kinmen (大金門): main island, center near ARP, ~13NM E-W × 7NM N-S
+  const bigKinmen=[
+    [-4.81,0.07],[-3.88,1.27],[-2.25,1.99],[-0.06,1.87],[2.12,1.57],
+    [3.49,0.97],[4.86,0.07],[4.58,-0.83],[3.22,-1.43],[1.03,-1.85],
+    [-0.88,-2.03],[-2.79,-1.73],[-4.43,-0.83],[-4.81,0.07]
+  ];
+  // Small Kinmen / Lieyu (小金門 / 烈嶼): W of big island
+  const smallKinmen=[
+    [-6.45,-0.23],[-5.63,0.55],[-4.70,0.19],[-4.87,-0.65],
+    [-5.80,-1.13],[-6.62,-0.83],[-6.45,-0.23]
+  ];
+  // Dadan Island (大膽島): far SW
+  const dadan=[
+    [-14.26,-18.23],[-13.44,-17.93],[-13.17,-18.53],
+    [-13.83,-19.01],[-14.37,-18.65],[-14.26,-18.23]
+  ];
+  // China / Fujian coast: N of chart, large landmass
+  const chinaCoast=[
+    [-17.0,7.3],[-11.5,9.1],[-6.1,10.3],[-0.6,9.1],
+    [4.9,7.3],[10.3,5.5],[15.8,4.3],[18.5,4.3],
+    [18.5,16.0],[-17.0,16.0],[-17.0,7.3]
+  ];
+  // Xiamen peninsula (廈門半島): W part of China coast, protrudes south
+  const xiamen=[
+    [-17.0,1.9],[-15.4,4.3],[-13.2,5.5],[-11.5,4.3],
+    [-12.1,1.9],[-14.3,0.7],[-15.9,0.7],[-17.0,1.9]
+  ];
+
+  [
+    {pts:bigKinmen,   fill:'rgba(22,50,24,0.92)', stroke:'rgba(55,170,80,0.50)', sw:1.2},
+    {pts:smallKinmen, fill:'rgba(20,46,22,0.90)', stroke:'rgba(50,155,72,0.45)', sw:1.0},
+    {pts:dadan,       fill:'rgba(18,42,20,0.85)', stroke:'rgba(45,140,65,0.35)', sw:0.8},
+    {pts:chinaCoast,  fill:'rgba(15,35,16,0.88)', stroke:'rgba(35,110,50,0.30)', sw:0.8},
+    {pts:xiamen,      fill:'rgba(16,36,18,0.85)', stroke:'rgba(35,110,50,0.28)', sw:0.7},
+  ].forEach(({pts,fill,stroke,sw})=>{
+    const cp=pts.map(p=>nm2c(p[0],p[1]));
+    cx.beginPath(); cp.forEach((p,i)=>i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y)); cx.closePath();
+    cx.fillStyle=fill; cx.fill();
+    cx.strokeStyle=stroke; cx.lineWidth=sw; cx.stroke();
+  });
+
+  // Water labels
+  const straitP=nm2c(-3,4.5);
+  cx.fillStyle='rgba(100,200,255,0.55)'; cx.font='bold 10px Share Tech Mono';
+  cx.textAlign='center'; cx.fillText('金廈海峽',straitP.x,straitP.y);
+  const seaP=nm2c(18,-10);
+  cx.fillStyle='rgba(100,200,255,0.35)';
+  cx.fillText('臺灣海峽',seaP.x,seaP.y);
+  // Island labels
+  cx.fillStyle='rgba(100,220,110,0.80)'; cx.font='bold 9px Share Tech Mono';
+  cx.textAlign='center';
+  const bkLbl=nm2c(-0.5,0.3); cx.fillText('大金門',bkLbl.x,bkLbl.y);
+  const skLbl=nm2c(-5.6,-0.3); cx.fillText('小金門',skLbl.x,skLbl.y);
+  const cnLbl=nm2c(-2,11); cx.fillStyle='rgba(80,170,90,0.65)';
+  cx.fillText('中國福建',cnLbl.x,cnLbl.y);
+  // Range rings (5,10,15,20,25 NM)
+  [5,10,15,20,25].forEach((r,i)=>{
+    const bright=i%2===1;
+    cx.strokeStyle=bright?'rgba(90,190,255,0.35)':'rgba(90,190,255,0.12)';
+    cx.lineWidth=bright?0.9:0.5;
+    cx.beginPath(); cx.arc(ox,oy,r*NM_PX,0,Math.PI*2); cx.stroke();
+    cx.fillStyle='rgba(140,210,255,0.75)'; cx.font='10px Share Tech Mono';
+    cx.textAlign='left'; cx.textBaseline='alphabetic';
+    cx.fillText(r+'NM',ox+r*NM_PX+3,oy-3);
+  });
+  // Radials (every 30°)
+  cx.strokeStyle='rgba(30,90,140,0.1)'; cx.lineWidth=0.4;
+  for(let a=0;a<360;a+=30){
+    const rad=(a-90)*Math.PI/180;
+    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+Math.cos(rad)*28*NM_PX,oy+Math.sin(rad)*28*NM_PX); cx.stroke();
+  }
+
+  // ── SID routes (correct per AIP charts) ──
+  // All SIDs: maintain RWY HDG until 600ft, then turn
+  // RWY06 (063°) → right turns; RWY24 (243°) → left turns
+  // Small initial segment to represent the "maintain HDG until 600ft" leg
+  const RWY06_exit = [0.0, 0.0];          // ARP (runway end approx)
+  const RWY24_exit = [0.0, 0.0];
+  const TURN06 = [0.65, 0.29];            // ~600ft climb-out on 063° from RWY06
+  const TURN24 = [-0.65, 0.29];           // ~600ft climb-out on 243° from RWY24
+
+  // BS 129BRG from BSN (near ARP) → SANDY: track ~129° magnetic, ICKM 14.7D
+  // SANDY is already at {x:11.61, y:-8.74} which is ~SE consistent with BS 129BRG track
+  // Intermediate point at ~half distance along BS 129BRG
+  const BS_129_MID = [5.8, -4.4];  // midpoint along BS 129BRG bearing toward SANDY
+
+  const sidRoutes=[
+    // CUBON 1A: RWY06 → maintain 063° to 600ft → right → BS001(E) → INDIA(SE) → CUBON(SE far)
+    {pts:[RWY06_exit, TURN06,
+          [WPT.BS001.x,WPT.BS001.y],
+          [WPT.INDIA.x,WPT.INDIA.y],
+          [WPT.CUBON.x,WPT.CUBON.y]],
+     col:'rgba(61,220,132,0.38)', lbl:'CUBON 1A', dash:[6,5]},
+    // INDIA 1A: RWY06 → 600ft → right → BS001 → INDIA (stops at INDIA)
+    {pts:[RWY06_exit, TURN06,
+          [WPT.BS001.x,WPT.BS001.y],
+          [WPT.INDIA.x,WPT.INDIA.y]],
+     col:'rgba(61,220,132,0.28)', lbl:'INDIA 1A', dash:[6,5]},
+    // SANDY 1A: RWY06 → 600ft → right → track BS 129BRG → SANDY
+    {pts:[RWY06_exit, TURN06,
+          BS_129_MID,
+          [WPT.SANDY.x,WPT.SANDY.y]],
+     col:'rgba(61,220,132,0.24)', lbl:'SANDY 1A', dash:[4,6]},
+    // SPRAY 1J: RWY06 → 600ft → right → HDG170 radar vectors (south ~15NM)
+    {pts:[RWY06_exit, TURN06,
+          [WPT.SPRAY_J.x,WPT.SPRAY_J.y]],
+     col:'rgba(61,220,132,0.18)', lbl:'SPRAY 1J', dash:[3,7]},
+    // CUBON 1B: RWY24 → 600ft → left → BS002(W-SW) → CUBON(SE far)
+    {pts:[RWY24_exit, TURN24,
+          [WPT.BS002.x,WPT.BS002.y],
+          [WPT.CUBON.x,WPT.CUBON.y]],
+     col:'rgba(255,184,48,0.35)', lbl:'CUBON 1B', dash:[6,5]},
+    // INDIA 1B: RWY24 → 600ft → left → BS002 → INDIA
+    {pts:[RWY24_exit, TURN24,
+          [WPT.BS002.x,WPT.BS002.y],
+          [WPT.INDIA.x,WPT.INDIA.y]],
+     col:'rgba(255,184,48,0.25)', lbl:'INDIA 1B', dash:[6,5]},
+    // SANDY 1B: RWY24 → 600ft → left → track BS 129BRG → SANDY
+    {pts:[RWY24_exit, TURN24,
+          BS_129_MID,
+          [WPT.SANDY.x,WPT.SANDY.y]],
+     col:'rgba(255,184,48,0.22)', lbl:'SANDY 1B', dash:[4,6]},
+    // SPRAY 1K: RWY24 → 600ft → left → HDG100 radar vectors (E ~15NM)
+    {pts:[RWY24_exit, TURN24,
+          [WPT.SPRAY_K.x,WPT.SPRAY_K.y]],
+     col:'rgba(255,184,48,0.16)', lbl:'SPRAY 1K', dash:[3,7]},
+  ];
+  sidRoutes.forEach(({pts,col,lbl,dash})=>{
+    cx.strokeStyle=col; cx.lineWidth=1.2; cx.setLineDash(dash||[6,5]);
+    cx.beginPath();
+    pts.forEach(([nx,ny],i)=>{const p=nm2c(nx,ny); i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y);});
+    cx.stroke(); cx.setLineDash([]);
+    // label near terminus
+    const ep=pts[pts.length-1], ep2=nm2c(ep[0],ep[1]);
+    cx.fillStyle=col.replace(/[\d.]+\)$/,'0.85)');
+    cx.font='bold 8px Share Tech Mono'; cx.textAlign='left';
+    cx.fillText(lbl,ep2.x+5,ep2.y-4);
+  });
+
+  // ── STAR / IAP arrival routes ──
+  const starRoutes=[
+    // CUBON 1C: CUBON → SPICA → SKIRT(IF) → FAP_06 → RWY06
+    {pts:[[WPT.CUBON.x,WPT.CUBON.y],[WPT.SPICA.x,WPT.SPICA.y],[WPT.SKIRT.x,WPT.SKIRT.y],[WPT.FAP_06.x,WPT.FAP_06.y],[0,0]],
+     col:'rgba(126,207,255,0.32)', lbl:'CUBON 1C', anchor:'start'},
+    // CUBON 2D: CUBON → POSTY → MELOG → INDOK(IF) → FAP_24 → RWY24
+    {pts:[[WPT.CUBON.x,WPT.CUBON.y],[WPT.POSTY.x,WPT.POSTY.y],[WPT.MELOG.x,WPT.MELOG.y],[WPT.INDOK.x,WPT.INDOK.y],[WPT.FAP_24.x,WPT.FAP_24.y],[0,0]],
+     col:'rgba(126,207,255,0.24)', lbl:'CUBON 2D', anchor:'start'},
+    // ILS RWY06: SANDY → SPICA → SKIRT(IF) → FAP_06 → THR
+    {pts:[[WPT.SANDY.x,WPT.SANDY.y],[WPT.SPICA.x,WPT.SPICA.y],[WPT.SKIRT.x,WPT.SKIRT.y],[WPT.FAP_06.x,WPT.FAP_06.y],[0,0]],
+     col:'rgba(0,200,190,0.28)', lbl:'ILS RWY06', anchor:'start'},
+    // ILS RWY24: AMTIK → INDOK(IF) → FAP_24 → THR
+    {pts:[[WPT.AMTIK.x,WPT.AMTIK.y],[WPT.INDOK.x,WPT.INDOK.y],[WPT.FAP_24.x,WPT.FAP_24.y],[0,0]],
+     col:'rgba(0,200,190,0.22)', lbl:'ILS RWY24', anchor:'start'},
+    // ILS RWY24 alt entry: SANDY → MELOG → INDOK → FAP_24
+    {pts:[[WPT.SANDY.x,WPT.SANDY.y],[WPT.MELOG.x,WPT.MELOG.y],[WPT.INDOK.x,WPT.INDOK.y],[WPT.FAP_24.x,WPT.FAP_24.y],[0,0]],
+     col:'rgba(0,200,190,0.14)', lbl:'', anchor:'start'},
+  ];
+  starRoutes.forEach(({pts,col,lbl,anchor})=>{
+    cx.strokeStyle=col; cx.lineWidth=1.1; cx.setLineDash([4,6]);
+    cx.beginPath();
+    pts.forEach(([nx,ny],i)=>{const p=nm2c(nx,ny); i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y);});
+    cx.stroke(); cx.setLineDash([]);
+    if(lbl){
+      const sp=pts[0], sp2=nm2c(sp[0],sp[1]);
+      cx.fillStyle=col.replace(/[\d.]+\)$/,'0.80)');
+      cx.font='bold 8px Share Tech Mono'; cx.textAlign='left';
+      cx.fillText(lbl,sp2.x+5,sp2.y-4);
+    }
+  });
+
+  // ILS localizer feathers — beam extends outbound FROM threshold
+  // RWY06 threshold at W end → localizer points W (inbound hdg 063° = aircraft flies EAST)
+  // Feather shows the extended centreline toward SPICA/SANDY (ESE direction from ARP)
+  drawILS_air('06'); drawILS_air('24');
+
+  // ── Waypoints ──
+  const IAF_names=['SANDY','SPICA','CUBON','AMTIK','MELOG'];
+  const FF_names=['FAP_06','FAP_24','SKIRT','INDOK'];
+  const HIDE=['SPRAY_J','SPRAY_K','RWY06_DTHR','RWY24_THR','KNISH','KETCH','KEBAB'];
+  Object.entries(WPT).forEach(([nm,wp])=>{
+    if(HIDE.includes(nm)) return;
+    const p=nm2c(wp.x,wp.y);
+    const isFF=FF_names.includes(nm);
+    const isIAF=IAF_names.includes(nm);
+    if(isFF){
+      cx.strokeStyle='rgba(0,200,190,0.75)'; cx.lineWidth=1;
+      const s=5;
+      cx.beginPath(); cx.moveTo(p.x,p.y-s); cx.lineTo(p.x+s,p.y); cx.lineTo(p.x,p.y+s); cx.lineTo(p.x-s,p.y); cx.closePath(); cx.stroke();
+      cx.fillStyle='rgba(0,200,190,0.15)'; cx.fill();
+    } else if(isIAF){
+      cx.strokeStyle='rgba(0,200,190,0.75)'; cx.lineWidth=1.2;
+      const s=6;
+      cx.beginPath(); cx.moveTo(p.x,p.y-s); cx.lineTo(p.x+s,p.y+s); cx.lineTo(p.x-s,p.y+s); cx.closePath(); cx.stroke();
+    } else {
+      cx.strokeStyle='rgba(0,200,190,0.50)'; cx.lineWidth=1;
+      const s=4;
+      cx.beginPath(); cx.moveTo(p.x,p.y-s); cx.lineTo(p.x+s,p.y+s); cx.lineTo(p.x-s,p.y+s); cx.closePath(); cx.stroke();
+    }
+    cx.fillStyle=isFF?'rgba(0,220,210,0.75)':'rgba(0,230,210,0.95)';
+    cx.font=(isIAF?'bold ':'')+'10px Share Tech Mono';
+    cx.textAlign='left'; cx.textBaseline='alphabetic'; cx.fillText(nm,p.x+8,p.y+3);
+  });
+
+  // ── RCBS ARP symbol ──
+  cx.strokeStyle='rgba(80,240,150,0.95)'; cx.lineWidth=1.5;
+  cx.beginPath(); cx.arc(ox,oy,5,0,Math.PI*2); cx.stroke();
+  cx.beginPath(); cx.moveTo(ox-12,oy); cx.lineTo(ox+12,oy); cx.moveTo(ox,oy-12); cx.lineTo(ox,oy+12); cx.stroke();
+  cx.fillStyle='rgba(80,240,150,0.95)'; cx.font='bold 11px Share Tech Mono';
+  cx.textAlign='left'; cx.textBaseline='alphabetic'; cx.fillText('RCBS',ox+9,oy+16);
+
+  // ── NDB BS symbol (345 kHz, at ARP area) ──
+  const ndbP=nm2c(-0.5,0.3);
+  cx.strokeStyle='rgba(255,200,60,0.80)'; cx.lineWidth=1.2;
+  cx.beginPath(); cx.arc(ndbP.x,ndbP.y,6,0,Math.PI*2); cx.stroke();
+  cx.beginPath(); cx.arc(ndbP.x,ndbP.y,3,0,Math.PI*2); cx.stroke();
+  cx.fillStyle='rgba(255,200,60,0.90)'; cx.font='bold 9px Share Tech Mono';
+  cx.textAlign='left'; cx.textBaseline='alphabetic'; cx.fillText('BS 345',ndbP.x+9,ndbP.y+3);
+
+  Object.values(ACs).forEach(ac=>{if(!isGnd(ac.cmdStep))drawACAir(ac);});
+}
+function drawILS_air(rwy){
+  // Localizer centreline extends outbound (away from runway, toward arriving aircraft)
+  // RWY06: aircraft approaches from SE on hdg 063° → localizer extends to SE = hdg 063°+180 = 243° TRUE
+  // RWY24: aircraft approaches from NW on hdg 243° → localizer extends to NW = hdg 243°+180 = 063° TRUE
+  // In canvas: hdg 063° = ENE (right of east slightly) = inbound for RWY06
+  // Outbound from RWY06 threshold = back-course toward SPICA/SANDY area
+  const outHdg = rwy==='06' ? 63 : 243;   // outbound direction (toward arriving aircraft)
+  const rad=(outHdg-90)*Math.PI/180;       // canvas rotation (0°=N → -90 offset)
+  const{ox,oy}=aOrig(); const len=12*NM_PX;
+  const ex=ox+Math.cos(rad)*len, ey=oy+Math.sin(rad)*len;
+  cx.strokeStyle='rgba(0,200,190,0.25)'; cx.lineWidth=1; cx.setLineDash([8,6]);
+  cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ex,ey); cx.stroke(); cx.setLineDash([]);
+  // Feather ticks
+  const perp=rad+Math.PI/2;
+  for(let d=2;d<=10;d+=2){
+    const mx2=ox+Math.cos(rad)*d*NM_PX, my2=oy+Math.sin(rad)*d*NM_PX;
+    const fw=0.45*NM_PX*(1-d/14);
+    cx.strokeStyle='rgba(0,165,155,0.15)'; cx.lineWidth=0.5;
+    cx.beginPath();
+    cx.moveTo(mx2+Math.cos(perp)*fw,my2+Math.sin(perp)*fw);
+    cx.lineTo(mx2-Math.cos(perp)*fw,my2-Math.sin(perp)*fw); cx.stroke();
+  }
+  cx.fillStyle='rgba(0,200,190,0.65)'; cx.font='8px Share Tech Mono'; cx.textAlign='left';
+  const ilsIdent = rwy==='06'?'ILS/DME RWY06 · ICKM 108.9':'ILS/DME RWY24 · ICSY 110.7';
+  cx.fillText(ilsIdent,ex+4,ey+3);
+}
+
+// ══════════════════════════════════════
+// AIRCRAFT ARROWS
+// ══════════════════════════════════════
+function drawArrow(px,py,hdgDeg,sz,col,isSel){
+  const ang=hdgDeg*Math.PI/180;
+  cx.save(); cx.translate(px,py); cx.rotate(ang);
+  if(isSel){
+    // Fixed-size selection rings regardless of sz (prevents jump on state change)
+    const r1=sz*2.2, r2=sz*3.0;
+    cx.strokeStyle='rgba(0,200,190,0.75)'; cx.lineWidth=1.8; cx.setLineDash([]);
+    cx.beginPath(); cx.arc(0,0,r1,0,Math.PI*2); cx.stroke();
+    cx.strokeStyle='rgba(0,200,190,0.22)'; cx.lineWidth=1;
+    cx.beginPath(); cx.arc(0,0,r2,0,Math.PI*2); cx.stroke();
+  }
+  // Arrow body
+  cx.fillStyle=col; cx.strokeStyle='rgba(0,0,0,0.3)'; cx.lineWidth=0.5;
+  cx.beginPath();
+  cx.moveTo(0,-sz*2.0);
+  cx.lineTo(sz*0.95,sz*0.9);
+  cx.lineTo(0,sz*0.25);
+  cx.lineTo(-sz*0.95,sz*0.9);
+  cx.closePath(); cx.fill(); cx.stroke();
+  cx.restore();
+}
+
+function getACPos(ac){
+  if(ac.cmdStep==='TAKEOFF_ROLL'){
+    const rwy=ac.assignedRwy||'06';
+    // 起飛起始x（像素），RWY06從DTHR附近，RWY24從THR24端
+    const rwyStartX = rwy==='06' ? DTHR06.x+30 : THR24.x-50;
+    const rwyEndX   = rwy==='06' ? THR24.x      : DTHR06.x+30;
+    const totalRoll = Math.abs(rwyEndX - rwyStartX);
+    const t = Math.min(ac.rwyRollDist / Math.max(totalRoll, 1), 1);
+    const curX = rwyStartX + (rwyEndX - rwyStartX) * t;
+    const p = imgToCv(curX, RWY_Y);
+    const hdg = rwy==='06' ? 90 : 270; // 畫面角度：90=向右(東)，270=向左(西)
+    return { px:p.x, py:p.y, hdg };
+  }
+  if(ac.cmdStep==='TURNING_06'){
+    const p = imgToCv(ac.gx, ac.gy);
+    return { px:p.x, py:p.y, hdg:ac.gHdg };
+  }
+  if(ac.cmdStep==='WAIT_LINEUP'||ac.cmdStep==='TAXIING_TO_RWY'){
+    if(ac.taxiIdx>=ac.taxiRoute.length && ac.cmdStep==='WAIT_LINEUP'){
+      const rwyX = ac.assignedRwy==='06' ? DTHR06.x+30 : THR24.x-50;
+      const p = imgToCv(rwyX, RWY_Y);
+      return { px:p.x, py:p.y, hdg:ac.assignedRwy==='06'?90:270 };
+    }
+  }
+  const p = imgToCv(ac.gx, ac.gy);
+  return { px:p.x, py:p.y, hdg:ac.gHdg };
+}
+
+function drawACGnd(ac){
+  const{px,py,hdg}=getACPos(ac);
+  const isSel=ac.id===sel;
+  const col=isSel?'#00c8be':ac.cat==='MIL'?'#ff9060':'#3ddc84';
+  const sz=Math.max(GS*12,4.5);
+
+  // reqFlash 只用管制條的 REQ 標籤顯示，畫面上不加外圈
+
+  drawArrow(px,py,hdg,sz,col,isSel);
+
+  // 班號：圓角矩形反白背景
+  cx.save();
+  const cs=ac.callsign;
+  cx.font='bold 11px Share Tech Mono';
+  const tw=cx.measureText(cs).width;
+  const bx=px+sz*2+3, by=py-8, bw=tw+10, bh=16, br=4;
+  // 背景
+  const bgCol=isSel?'rgba(0,200,190,0.95)':ac.cat==='MIL'?'rgba(255,144,96,0.9)':'rgba(61,220,132,0.9)';
+  cx.fillStyle=bgCol;
+  cx.beginPath();
+  cx.moveTo(bx+br,by); cx.lineTo(bx+bw-br,by);
+  cx.arcTo(bx+bw,by,bx+bw,by+bh,br);
+  cx.lineTo(bx+bw,by+bh-br);
+  cx.arcTo(bx+bw,by+bh,bx,by+bh,br);
+  cx.lineTo(bx+br,by+bh);
+  cx.arcTo(bx,by+bh,bx,by,br);
+  cx.lineTo(bx,by+br);
+  cx.arcTo(bx,by,bx+bw,by,br);
+  cx.closePath(); cx.fill();
+  cx.fillStyle='#0a1820';
+  cx.textAlign='left'; cx.textBaseline='middle';
+  cx.fillText(cs,bx+5,by+bh/2);
+
+  // REQ 標記僅在管制條上顯示，SMR 畫面不顯示
+
+  cx.restore();
+}
+
+// 畫滑行路線預覽（懸停跑道選項時）
+function drawTaxiPreview(route, col){
+  if(!route||route.length<2) return;
+  cx.save();
+  cx.strokeStyle=col||'rgba(255,220,80,0.6)';
+  cx.lineWidth=Math.max(2, 3*GS); cx.setLineDash([8,5]);
+  cx.beginPath();
+  route.forEach((pt,i)=>{
+    const p=imgToCv(pt.x, pt.y);
+    i===0?cx.moveTo(p.x,p.y):cx.lineTo(p.x,p.y);
+  });
+  cx.stroke(); cx.setLineDash([]); cx.restore();
+}
+function drawACAir(ac){
+  const p=nm2c(ac.ax,ac.ay);
+  const isSel=ac.id===sel;
+  const col=isSel?'#00c8be':ac.cmdStep==='FINAL_APPROACH'?'#ffb830':ac.cat==='MIL'?'#ff9060':'#5abeff';
+  const sz=8;
+  const ang=ac.aHdg*Math.PI/180;
+  for(let i=1;i<=5;i++){
+    const bx=p.x-Math.sin(ang)*i*7, by=p.y+Math.cos(ang)*i*7;
+    cx.fillStyle=`rgba(90,190,255,${0.16-i*0.025})`;
+    cx.beginPath(); cx.arc(bx,by,3.5-i*0.5,0,Math.PI*2); cx.fill();
+  }
+  drawArrow(p.x,p.y,ac.aHdg,sz,col,isSel);
+  cx.save();
+  const lx=p.x+sz*2+4,ly=p.y-8;
+  // 班號圓角標
+  cx.font='bold 11px Share Tech Mono';
+  const tw=cx.measureText(ac.callsign).width;
+  const bw=tw+10,bh=15,br=4;
+  cx.fillStyle=isSel?'rgba(0,200,190,0.9)':'rgba(90,190,255,0.85)';
+  cx.beginPath();
+  cx.moveTo(lx+br,ly); cx.lineTo(lx+bw-br,ly);
+  cx.arcTo(lx+bw,ly,lx+bw,ly+bh,br); cx.lineTo(lx+bw,ly+bh-br);
+  cx.arcTo(lx+bw,ly+bh,lx,ly+bh,br); cx.lineTo(lx+br,ly+bh);
+  cx.arcTo(lx,ly+bh,lx,ly,br); cx.lineTo(lx,ly+br);
+  cx.arcTo(lx,ly,lx+bw,ly,br); cx.closePath(); cx.fill();
+  cx.fillStyle='#060e1a'; cx.textAlign='left'; cx.textBaseline='middle';
+  cx.fillText(ac.callsign,lx+5,ly+bh/2);
+  // 高度速度
+  cx.font='10px Share Tech Mono'; cx.fillStyle='rgba(160,218,208,0.88)';
+  cx.textBaseline='alphabetic';
+  cx.fillText(Math.round(ac.altitude/100)*100+'ft',lx,ly+bh+11);
+  cx.fillText(Math.round(ac.aSpd)+'kt',lx+56,ly+bh+11);
+  cx.restore();
+}
+
+// Convert NM offset → ground canvas pixel (overlays air AC on SMR ground view)
+// ARP is at roughly ground coordinate (RWY_LEN/2, 0) = runway midpoint
+function nm2gCanvas(nx, ny){
+  // NM座標（以ARP為原點）→ 圖片像素 → canvas像素
+  // airport_view.jpg 的 x 軸對應真方位 063°（非正東）
+  // 需要將 NM 座標旋轉到圖片座標系
+  const A = 63 * Math.PI / 180; // 跑道真方位（圖片x軸方向）
+  const scale = 1852 * PX_PER_M; // NM → 像素
+  const arpPxX = (DTHR06.x + THR24.x) / 2;
+  const arpPxY = RWY_Y;
+  // 圖片x軸 = 沿063°方向，圖片y向下 = 沿153°方向（063+90）
+  const imgX = arpPxX + (nx * Math.sin(A) + ny * Math.cos(A)) * scale;
+  const imgY = arpPxY + (nx * Math.cos(A) - ny * Math.sin(A)) * scale;
+  return imgToCv(imgX, imgY);
+}
+
+function drawACsOnGround(){
+  // Draw arriving/departing air aircraft on the ground SMR view
+  Object.values(ACs).forEach(ac=>{
+    if(isGnd(ac.cmdStep)) return; // ground AC drawn separately
+    if(['DEP_APP'].includes(ac.cmdStep) && Math.abs(ac.ax)>18) return; // too far out
+    const p = nm2gCanvas(ac.ax, ac.ay);
+    // Only draw if within canvas bounds (with margin)
+    if(p.x < -40 || p.x > cW+40 || p.y < -40 || p.y > cH+40) return;
+    const isSel = ac.id===sel;
+    const isArr = ['APPROACHING','INBOUND','SEQUENCING','FINAL_APPROACH'].includes(ac.cmdStep);
+    const col = isSel?'#00c8be': isArr?'#5abeff':'#3ddc84';
+    const sz = Math.max(GS*12, 4.5); // same as drawACGnd — prevents jump on transition; GS refreshed by getGS()
+    // Speed vector trail
+    // SMR 圖片座標系：x軸對應真方位063°，轉換航向至圖片角度
+    const smrHdg = (ac.aHdg - 63 + 90 + 360) % 360;
+    const ang = smrHdg*Math.PI/180;
+    for(let i=1;i<=4;i++){
+      const tx=p.x - Math.sin(ang)*i*9, ty=p.y + Math.cos(ang)*i*9;
+      cx.fillStyle=`rgba(90,190,255,${0.18-i*0.03})`;
+      cx.beginPath(); cx.arc(tx,ty,3-i*0.4,0,Math.PI*2); cx.fill();
+    }
+    drawArrow(p.x, p.y, smrHdg, sz, col, isSel);
+    // Label
+    cx.save();
+    cx.font='bold 10px Share Tech Mono';
+    const tw2=cx.measureText(ac.callsign).width;
+    const bx=p.x+sz*2+3, by=p.y-7, bw=tw2+8, bh=14, br=3;
+    cx.fillStyle=isSel?'rgba(0,200,190,0.92)':'rgba(90,190,255,0.88)';
+    cx.beginPath();
+    cx.moveTo(bx+br,by); cx.lineTo(bx+bw-br,by);
+    cx.arcTo(bx+bw,by,bx+bw,by+bh,br); cx.lineTo(bx+bw,by+bh-br);
+    cx.arcTo(bx+bw,by+bh,bx,by+bh,br); cx.lineTo(bx+br,by+bh);
+    cx.arcTo(bx,by+bh,bx,by,br); cx.lineTo(bx,by+br);
+    cx.arcTo(bx,by,bx+bw,by,br); cx.closePath(); cx.fill();
+    cx.fillStyle='#060e1a'; cx.textAlign='left'; cx.textBaseline='middle';
+    cx.fillText(ac.callsign,bx+4,by+bh/2);
+    // Alt+spd tag
+    const altTxt=Math.round(ac.altitude/100)*100+'ft';
+    cx.font='9px Share Tech Mono'; cx.fillStyle='rgba(160,218,208,0.85)';
+    cx.textBaseline='alphabetic';
+    cx.fillText(altTxt, bx, by+bh+10);
+    cx.restore();
+  });
+}
+
+function render(){ drawGround(); drawACsOnGround(); drawMinimap(); }
+
+// ══════════════════════════════════════
+// MINIMAP (ASR radar in bottom-left)
+// ══════════════════════════════════════
+// ── 公用 minimap 繪圖核心（主畫面 & 彈出視窗共用）──
+function drawMinimapTo(mc, W, H, doRoutes, doAC){
+  const RANGE=30;
+  const NM_MM = Math.min(W,H)*0.5/RANGE;
+  // 左移、上移中心使CUBON（SE方向約32.5NM）可見於畫面右下
+  const mox=W*0.34, moy=H*0.32;
+  function mm2px(nx,ny){return{x:mox+nx*NM_MM, y:moy-ny*NM_MM};}
+
+  // Background
+  mc.fillStyle='#060e18'; mc.fillRect(0,0,W,H);
+
+  // ── Range rings ──
+  [5,10,15,20,25,30].forEach((r,i)=>{
+    const bright=i%2===1;
+    mc.strokeStyle=bright?'rgba(0,210,200,0.40)':'rgba(0,210,200,0.15)';
+    mc.lineWidth=bright?0.8:0.4;
+    mc.beginPath(); mc.arc(mox,moy,r*NM_MM,0,Math.PI*2); mc.stroke();
+    if(bright){
+      mc.fillStyle='rgba(0,220,210,0.60)'; mc.font='bold 7px Share Tech Mono'; mc.textAlign='left';
+      mc.fillText(r+'NM', mox+r*NM_MM+2, moy-2);
+    }
+  });
+
+  // ── 跑道 + LOC延伸線 ──
+  {
+    const r06=mm2px(WPT.RWY06_DTHR.x, WPT.RWY06_DTHR.y);
+    const r24=mm2px(WPT.RWY24_THR.x, WPT.RWY24_THR.y);
+    mc.strokeStyle='rgba(200,220,200,0.80)'; mc.lineWidth=2.5;
+    mc.beginPath(); mc.moveTo(r06.x,r06.y); mc.lineTo(r24.x,r24.y); mc.stroke();
+    const sin63=Math.sin(63*Math.PI/180), cos63=Math.cos(63*Math.PI/180);
+    const ext=12*NM_MM;
+    mc.strokeStyle='rgba(0,200,190,0.20)'; mc.lineWidth=0.7; mc.setLineDash([5,5]);
+    mc.beginPath(); mc.moveTo(r06.x,r06.y); mc.lineTo(r06.x-sin63*ext, r06.y+cos63*ext); mc.stroke();
+    mc.beginPath(); mc.moveTo(r24.x,r24.y); mc.lineTo(r24.x+sin63*ext, r24.y-cos63*ext); mc.stroke();
+    mc.setLineDash([]);
+  }
+
+  // ── TMA boundary（畫在航線下方）──
+  const tma=[[-16,-7],[-5,-22],[30,-22],[30,8],[8,15],[-8,15],[-16,-7]];
+  mc.strokeStyle='rgba(255,150,40,0.70)'; mc.lineWidth=1.1; mc.setLineDash([6,4]);
+  mc.beginPath(); tma.forEach(([x,y],i)=>{const p=mm2px(x,y); i?mc.lineTo(p.x,p.y):mc.moveTo(p.x,p.y);}); mc.closePath(); mc.stroke(); mc.setLineDash([]);
+  const tmaLbl=mm2px(10,12); mc.fillStyle='rgba(255,150,40,0.75)'; mc.font='bold 7px Share Tech Mono'; mc.textAlign='left';
+  mc.fillText('KINMEN TMA',tmaLbl.x,tmaLbl.y);
+
+  if(doRoutes){
+    const T06=[WPT.RWY06_DTHR.x, WPT.RWY06_DTHR.y];
+    const T24=[WPT.RWY24_THR.x,  WPT.RWY24_THR.y];
+    const R06=T06, R24=T24;
+
+    // SID（離場，亮粉色）
+    const mmSIDs=[
+      {pts:[T06,[WPT.BS001.x,WPT.BS001.y],[WPT.INDIA.x,WPT.INDIA.y],[WPT.CUBON.x,WPT.CUBON.y]], col:'rgba(255,90,180,0.75)'},
+      {pts:[T06,[WPT.SANDY.x,WPT.SANDY.y]], col:'rgba(255,90,180,0.58)'},
+      {pts:[T24,[WPT.BS002.x,WPT.BS002.y],[WPT.CUBON.x,WPT.CUBON.y]], col:'rgba(255,90,180,0.65)'},
+      {pts:[T24,[WPT.SANDY.x,WPT.SANDY.y]], col:'rgba(255,90,180,0.50)'},
+    ];
+    mmSIDs.forEach(({pts,col})=>{
+      mc.strokeStyle=col; mc.lineWidth=0.9; mc.setLineDash([5,4]);
+      mc.beginPath(); pts.forEach(([nx,ny],i)=>{const p=mm2px(nx,ny); i?mc.lineTo(p.x,p.y):mc.moveTo(p.x,p.y);}); mc.stroke(); mc.setLineDash([]);
+    });
+
+    // STAR（進場，亮藍色）
+    const mmSTARs=[
+      {pts:[[WPT.SANDY.x,WPT.SANDY.y],[WPT.SPICA.x,WPT.SPICA.y]], col:'rgba(96,200,255,0.58)'},
+      {pts:[[WPT.CUBON.x,WPT.CUBON.y],[WPT.SPICA.x,WPT.SPICA.y],[WPT.SKIRT.x,WPT.SKIRT.y],[WPT.FAP_06.x,WPT.FAP_06.y],R06], col:'rgba(96,200,255,0.75)'},
+      {pts:[[WPT.AMTIK.x,WPT.AMTIK.y],[WPT.INDOK.x,WPT.INDOK.y],[WPT.FAP_24.x,WPT.FAP_24.y],R24], col:'rgba(96,200,255,0.58)'},
+      {pts:[[WPT.CUBON.x,WPT.CUBON.y],[WPT.POSTY.x,WPT.POSTY.y],[WPT.MELOG.x,WPT.MELOG.y],[WPT.INDOK.x,WPT.INDOK.y],[WPT.FAP_24.x,WPT.FAP_24.y],R24], col:'rgba(96,200,255,0.58)'},
+    ];
+    mmSTARs.forEach(({pts,col})=>{
+      mc.strokeStyle=col; mc.lineWidth=0.9; mc.setLineDash([3,5]);
+      mc.beginPath(); pts.forEach(([nx,ny],i)=>{const p=mm2px(nx,ny); i?mc.lineTo(p.x,p.y):mc.moveTo(p.x,p.y);}); mc.stroke(); mc.setLineDash([]);
+    });
+
+    // ── Waypoints：AMTIK省略（與MELOG距離僅0.7NM，ASR上重疊）──
+    const SHOW_WPT=['BS001','BS002','INDIA','CUBON','POSTY','SPICA','MELOG','SANDY','SKIRT','INDOK','FAP_06','FAP_24'];
+    SHOW_WPT.forEach(nm=>{
+      const wp=WPT[nm]; if(!wp) return;
+      const p=mm2px(wp.x,wp.y);
+      if(p.x<-10||p.x>W+10||p.y<-10||p.y>H+10) return;
+      // 三角形符號
+      mc.strokeStyle='rgba(0,220,205,0.85)'; mc.lineWidth=0.9;
+      const s=3.5;
+      mc.beginPath(); mc.moveTo(p.x,p.y-s); mc.lineTo(p.x+s,p.y+s); mc.lineTo(p.x-s,p.y+s); mc.closePath(); mc.stroke();
+      // 名稱標籤
+      mc.fillStyle='rgba(0,225,210,0.92)';
+      mc.font='10px Share Tech Mono'; mc.textAlign='left';
+      mc.fillText(nm, p.x+5, p.y+4);
+    });
+  }
+
+  // ── RCBS ARP crosshair ──
+  const arp=mm2px(0,0);
+  mc.strokeStyle='rgba(80,240,150,0.95)'; mc.lineWidth=1.2;
+  mc.beginPath(); mc.arc(arp.x,arp.y,3.5,0,Math.PI*2); mc.stroke();
+  mc.beginPath(); mc.moveTo(arp.x-9,arp.y); mc.lineTo(arp.x+9,arp.y); mc.moveTo(arp.x,arp.y-9); mc.lineTo(arp.x,arp.y+9); mc.stroke();
+  mc.fillStyle='rgba(80,240,150,0.95)'; mc.font='bold 10px Share Tech Mono';
+  mc.textAlign='left'; mc.fillText('RCBS',arp.x+6,arp.y+14);
+
+  // ── Aircraft blips ──
+  if(doAC){
+    Object.values(ACs).forEach(ac=>{
+      const isAir=!isGnd(ac.cmdStep);
+      if(!isAir) return;
+      const isArr=['APPROACHING','INBOUND','SEQUENCING','FINAL_APPROACH'].includes(ac.cmdStep);
+      // 離場飛機：飛出SMR畫面後才出現在ASR上
+      const isDep=['AIRBORNE_CLIMB','DEP_APP'].includes(ac.cmdStep);
+      if(isDep){
+        const smrPt=nm2gCanvas(ac.ax,ac.ay);
+        const onSMR=(smrPt.x>-20&&smrPt.x<cW+20&&smrPt.y>-20&&smrPt.y<cH+20);
+        if(onSMR) return; // 還在SMR畫面內，不在ASR顯示
+      }
+      const isSel=ac.id===sel;
+      const p=mm2px(ac.ax,ac.ay);
+      if(p.x<-8||p.x>W+8||p.y<-8||p.y>H+8) return;
+      const col=isSel?'rgba(0,200,190,1)':isArr?'rgba(126,207,255,0.95)':'rgba(61,220,132,0.95)';
+      const r=3.5;
+      if(isSel){
+        mc.strokeStyle='rgba(0,200,190,0.7)'; mc.lineWidth=1;
+        mc.beginPath(); mc.arc(p.x,p.y,r+3,0,Math.PI*2); mc.stroke();
+      }
+      mc.fillStyle=col; mc.beginPath(); mc.arc(p.x,p.y,r,0,Math.PI*2); mc.fill();
+      const vrad=ac.aHdg*Math.PI/180;
+      mc.strokeStyle=col; mc.lineWidth=0.9;
+      mc.beginPath(); mc.moveTo(p.x,p.y); mc.lineTo(p.x+Math.sin(vrad)*10, p.y-Math.cos(vrad)*10); mc.stroke();
+      mc.fillStyle=col; mc.font='bold 9px Share Tech Mono'; mc.textAlign='left';
+      mc.fillText(ac.callsign, p.x+r+3, p.y+3);
+      mc.fillStyle='rgba(180,235,225,0.85)'; mc.font='8px Share Tech Mono';
+      mc.fillText(Math.round(ac.altitude/100)*100+'ft', p.x+r+3, p.y+13);
+    });
+  }
+}
+
+function drawMinimap(){
+  if(!mmCx||!mmW||!mmH) return;
+  drawMinimapTo(mmCx, mmW, mmH, showRoutes, showAC);
+}
+
+// ══════════════════════════════════════
+// GAME LOGIC
+// ══════════════════════════════════════
+let lastT=0;
+function update(rdt){
+  gTime+=rdt;
+  Object.values(ACs).forEach(ac=>upAC(ac,rdt));
+}
+function upAC(ac,dt){
+  ac.waitTimer+=dt;
+
+  switch(ac.cmdStep){
+
+    // 停機坪等待，飛行員主動請求出發許可
+    case 'WAIT_REQ':
+      if(!ac.pilotCalled && ac.waitTimer>18){
+        ac.pilotCalled=true;
+        qC([{seat:'AC',cs:ac.callsign,
+          msg:PHR.AC.REQ_CLR(ac.callsign,ac.gate,ac.destination,ac.fl),type:'ac'}],
+          ()=>{
+            ac.cmdStep='WAIT_CLR';
+            ac.reqFlash=true;
+            updateUI();
+          });
+      }
+      break;
+
+    // 已頒出發許可，等玩家按後推
+    case 'WAIT_CLR':
+    case 'WAIT_PBK':
+      break;
+
+    // 已後推，等玩家選跑道
+    case 'WAIT_RWY':
+      break;
+
+    // 滑行中
+    case 'TAXIING':
+      if(ac.taxiRoute.length===0) break; // 安全保護：路線未設定則不動
+      moveTaxi(ac,dt);
+      if(ac.taxiIdx >= ac.taxiRoute.length){
+        if(!ac.assignedHold){
+          // 後推到 TWY N，停下等玩家選繼續滑行
+          ac.cmdStep='WAIT_TAXI_RESUME';
+          ac.reqFlash=true;
+          qC([
+            {seat:TAXI_CONFIG.comms.taxi.atc_seat,cs:ac.callsign,
+             msg:`${ac.callsign}，已到達TWY N，請指示`,type:'atc'},
+            {seat:'AC',cs:ac.callsign,
+             msg:`等待滑行指示，${ac.callsign}`,type:'ac'},
+          ],()=>{ updateUI(); });
+        } else {
+          // 到達目標等待點（H-C/H-D/H-A/H-B）
+          ac.cmdStep='WAIT_ENTRY';
+          ac.reqFlash=true;
+          qC([
+            {seat:'AC',cs:ac.callsign,
+             msg:`${ac.assignedHold}，${ac.callsign}，等待起飛許可`,type:'ac'},
+          ],()=>{ updateUI(); });
+        }
+        updateUI();
+      }
+      break;
+
+    case 'WAIT_TAXI_RESUME':
+      break;
+
+    // 在等待點，等玩家選 TWR 指令
+    case 'WAIT_ENTRY':
+      break;
+
+    // 已進入跑道，等待起飛許可
+    case 'WAIT_LINEUP':
+      if(!ac.pilotCalled2 && ac.waitTimer>8){
+        ac.pilotCalled2=true;
+        ac.reqFlash=true;
+        qC([{seat:'AC',cs:ac.callsign,
+          msg:PHR.AC.READY(ac.callsign,ac.assignedRwy),type:'ac'}],
+          ()=>{ updateUI(); });
+      }
+      break;
+
+    case 'TAKEOFF_ROLL': {
+      const perf = getPerf(ac);
+      // 速度單位：px/s（liftoff kt × PX_PER_M ≈ px/s，近似 kt→m/s 後乘比例尺）
+      const maxSpd = perf.spd_liftoff * PX_PER_M * 0.5144; // kt→px/s
+      const accelRate = (14 + (ac.gSpd / maxSpd) * 22) * PX_PER_M * 0.5144;
+      ac.gSpd = Math.min(ac.gSpd + accelRate * dt, maxSpd);
+      ac.rwyRollDist += ac.gSpd * dt; // px
+      const rwyStartX = ac.assignedRwy==='06' ? DTHR06.x+30 : THR24.x-30;
+      const availRoll = ac.assignedRwy==='06'
+        ? (THR24.x - rwyStartX)     // px
+        : (rwyStartX - DTHR06.x);   // px
+      if(ac.rwyRollDist >= availRoll * 0.70){
+        ac.cmdStep='AIRBORNE_CLIMB';
+        ac.onRwy=false;
+        const rwyHdg = ac.assignedRwy==='06' ? 63 : 243;
+        const arpPxX = (DTHR06.x + THR24.x) / 2;
+        const liftPxX = ac.assignedRwy==='06'
+          ? (rwyStartX + ac.rwyRollDist)
+          : (rwyStartX - ac.rwyRollDist);
+        ac.ax = (liftPxX - arpPxX) / PX_PER_M / 1852; // px→m→NM
+        ac.ay = 0;
+        ac.aHdg = rwyHdg;
+        ac.aSpd = perf.spd_liftoff;
+        ac.altitude = 80;
+        ac.targetAlt = ac.fl*100 || 18000;
+        ac.targetHdg = rwyHdg;
+        ac.holdRwyHdg = true;
+        ac.airRouteIdx = 0;
+        qC([
+          {seat:'TWR',cs:ac.callsign,msg:PHR.TWR.AIRBORNE(ac.callsign),type:'atc'},
+          {seat:'AC', cs:ac.callsign,msg:PHR.AC.WILCO('離場，'+ac.callsign+'，再見'),type:'ac'},
+        ],()=>{ ac.reqFlash=true; ac.handoffPending=true; updateUI(); });
+        setMsg(ac.callsign+' 離地');
+      }
+      break;
+    }
+
+    // 空中爬升，等交接塔台→進近
+    case 'AIRBORNE_CLIMB':
+      moveAir(ac,dt);
+      break;
+
+    // RWY06：DTHR 360° 迴轉（gHdg 270→90，向右轉完整一圈）
+    case 'TURNING_06': {
+      const turnSpd = 40; // deg/s（慢一點，更真實）
+      let diff = 90 - ac.gHdg;
+      while(diff > 180) diff -= 360; while(diff < -180) diff += 360;
+      // 強制右轉（正方向）
+      if(diff < 0) diff += 360;
+      if(diff < turnSpd*dt){
+        ac.gHdg = 90;
+        ac.cmdStep = ac._afterTurn || 'TAKEOFF_ROLL';
+        ac._afterTurn = null;
+        ac.gSpd = 0;
+      } else {
+        ac.gHdg = (ac.gHdg + turnSpd*dt + 360) % 360;
+      }
+      break;
+    }
+
+    // RWY24：THR24 180° 轉頭（gHdg 90→270，向左轉半圈）
+    case 'TURNING_24': {
+      const turnSpd = 40;
+      let diff = 270 - ac.gHdg;
+      while(diff > 180) diff -= 360; while(diff < -180) diff += 360;
+      if(Math.abs(diff) < turnSpd*dt){
+        ac.gHdg = 270;
+        ac.cmdStep = ac._afterTurn || 'TAKEOFF_ROLL';
+        ac._afterTurn = null;
+        ac.gSpd = 0;
+      } else {
+        ac.gHdg = (ac.gHdg + Math.sign(diff)*turnSpd*dt + 360) % 360;
+      }
+      break;
+    }
+
+    // 進入跑道頭的最後一段滑行
+    case 'TAXIING_TO_RWY':
+      moveTaxi(ac,dt);
+      break;
+
+
+
+    // 進場相關
+    case 'INBOUND': case 'SEQUENCING':
+      // 若 waitTimer 為負，飛機尚未出現，保持靜止
+      if(ac.waitTimer < 0) break;
+      moveAir(ac,dt);
+      // 進場中首次呼叫高雄進近
+      if(!ac.pilotCalled && ac.cmdStep==='INBOUND' && ac.waitTimer>5){
+        ac.pilotCalled=true;
+        const distNM=Math.round(Math.sqrt(ac.ax*ac.ax+ac.ay*ac.ay));
+        const alt=Math.round(ac.altitude/100)*100;
+        let nearWpt='進場中';
+        if(ac.airRoute && ac.airRoute.length>0 && ac.airRouteIdx<ac.airRoute.length){
+          nearWpt=ac.airRoute[ac.airRouteIdx].name||'進場中';
+        }
+        qC([{seat:'AC',cs:ac.callsign,
+          msg:`高雄進近，${ac.callsign}，${nearWpt}報告，距場${distNM}浬，高度${alt}呎，請求ILS進場`,
+          type:'ac'}],()=>{ac.reqFlash=true; updateUI();});
+      }
+      break;
+
+    // APPROACHING：飛機從畫面外飛向CUBON，期間顯示跑道選項
+    case 'APPROACHING':
+      if(ac.waitTimer < 0) break;
+      // 持續將航向指向CUBON
+      {
+        const dx = WPT.CUBON.x - ac.ax;
+        const dy = WPT.CUBON.y - ac.ay;
+        ac.targetHdg = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+      }
+      moveAir(ac, dt);
+      // 第一次出現在雷達上：APP發雷達識別通話，顯示REQ讓玩家選跑道
+      if(!ac.pilotCalled && ac.waitTimer > 2){
+        ac.pilotCalled = true;
+        ac.reqFlash = true;
+        const distNM = Math.round(Math.sqrt(ac.ax*ac.ax + ac.ay*ac.ay));
+        const alt = Math.round(ac.altitude/100)*100;
+        qC([
+          {seat:'AC', cs:ac.callsign,
+           msg:`高雄進近，${ac.callsign}，距場${distNM}浬，高度${alt}呎，請求進場`,
+           type:'ac'},
+          {seat:'APP',cs:ac.callsign,
+           msg:`${ac.callsign}，高雄進近，雷達識別，請確認進場跑道`,
+           type:'atc'},
+        ],()=>{ updateUI(); });
+        updateUI();
+      }
+      // 超時自動指派RWY06（60遊戲秒內未選），APP發通知
+      if(!ac.rwyAssigned && ac.waitTimer > 60){
+        ac.assignedRwy = '06';
+        ac.rwyAssigned = true;
+        ac.pendingArrRoute = 'CUBON-1C-06';
+        qC([
+          {seat:'APP',cs:ac.callsign,
+           msg:`${ac.callsign}，預設指派ILS跑道06，CUBON 1C進場`,
+           type:'atc'},
+          {seat:'AC', cs:ac.callsign,
+           msg:`ILS跑道06，CUBON 1C，${ac.callsign}`,
+           type:'ac'},
+        ],null);
+      }
+      // 抵達CUBON附近 → 切換為INBOUND，設定航路
+      {
+        const dx = WPT.CUBON.x - ac.ax;
+        const dy = WPT.CUBON.y - ac.ay;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if(dist < 1.5){
+          const routeKey = ac.pendingArrRoute || 'CUBON-1C-06';
+          ac.airRoute = [...(ARR_ROUTES[routeKey] || [])];
+          ac.airRouteIdx = 0;
+          ac.holdRwyHdg = false;
+          ac.cmdStep = 'INBOUND';
+          ac.reqFlash = false;
+          updateUI();
+        }
+      }
+      break;
+
+    // 已移交高雄進近的離場飛機（TMA內，等待移交台北ACC）
+    case 'DEP_APP':
+      moveAir(ac,dt);
+      // 飛完SID終點（CUBON等）後，APP發移交台北ACC訊息，然後消失
+      if(ac.airRouteIdx >= ac.airRoute.length && !ac.accHandoffDone){
+        ac.accHandoffDone=true;
+        qC([
+          {seat:'APP',cs:ac.callsign,msg:`${ac.callsign}，聯繫${TAXI_CONFIG.comms.handoff_to_acc.transfer_name}，再見`,type:'atc'},
+          {seat:'AC', cs:ac.callsign,msg:`台北管制，${ac.callsign}，再見`,type:'ac'},
+        ],()=>{
+          // 短暫延遲後移除
+          setTimeout(()=>{
+            delete ACs[ac.id];
+            if(sel===ac.id){sel=null; updateUI();}
+          }, 3000);
+        });
+      }
+      break;
+
+    case 'FINAL_APPROACH':
+      moveAir(ac,dt);
+      if(ac.clearedILS){
+        const rwy = ac.assignedRwy||'06';
+        // 觸地：飛機接近跑道入口且高度低於 200ft
+        const thrNM = rwy==='06' ? WPT.RWY06_DTHR : WPT.RWY24_THR;
+        const distToThr = Math.sqrt((ac.ax-thrNM.x)**2+(ac.ay-thrNM.y)**2);
+        if(distToThr < 0.5 && ac.altitude < 200){
+          ac.cmdStep='LANDED';
+          ac.onRwy=true;
+          ac.gx = rwy==='06' ? THR24.x-80 : DTHR06.x+80;
+          ac.gy = RWY_Y;
+          ac.gHdg = rwy==='06' ? 270 : 90;
+          ac.gSpd = 8;
+          ac.altitude = 0;
+          qC([
+            {seat:'TWR',cs:ac.callsign,msg:PHR.TWR.VACATE(ac.callsign,'TWY A'),type:'atc'},
+            {seat:'AC', cs:ac.callsign,msg:`脫離跑道，聯繫地面，${ac.callsign}`,type:'ac'},
+          ],()=>{ updateUI(); });
+          setMsg(ac.callsign+' 落地');
+          updateUI();
+        }
+      }
+      break;
+
+    case 'LANDED':
+      // 落地後滑行至停機坪後移除
+      ac.gSpd=8;
+      ac.waitTimer+=dt;
+      if(ac.waitTimer>12){
+        delete ACs[ac.id];
+        if(sel===ac.id){sel=null; updateUI();}
+      }
+      break;
+  }
+}
+
+function moveTaxi(ac,dt){
+  if(atcSpeaking) return; // ATC 正在發話，飛機等待
+  if(ac.taxiIdx>=ac.taxiRoute.length) return;
+  const tgt=ac.taxiRoute[ac.taxiIdx];
+  const dx=tgt.x-ac.gx, dy=tgt.y-ac.gy;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  // gSpd 單位 m/s，座標為像素；移動量 = gSpd * dt * PX_PER_M
+  const spd=(ac.gSpd||5) * PX_PER_M;
+  if(dist<Math.max(spd*dt*1.5, 1.5)){
+    ac.gx=tgt.x; ac.gy=tgt.y; ac.taxiIdx++;
+  } else {
+    ac.gx+=dx/dist*spd*dt;
+    ac.gy+=dy/dist*spd*dt;
+    if(tgt.isPushback){
+      // 後推：機頭保持朝北（0°），等到達TWY N後轉向
+      const northHdg = 0;
+      let diff = northHdg - ac.gHdg;
+      while(diff>180)diff-=360; while(diff<-180)diff+=360;
+      const maxTurn=90*dt;
+      if(Math.abs(diff)<maxTurn) ac.gHdg=northHdg;
+      else ac.gHdg=(ac.gHdg+Math.sign(diff)*maxTurn+360)%360;
+    } else {
+      // 正常滑行：朝目標轉頭
+      let targetHdg=Math.atan2(dx, -dy)*180/Math.PI;
+      if(targetHdg<0) targetHdg+=360;
+      let diff=targetHdg-ac.gHdg;
+      while(diff>180)diff-=360; while(diff<-180)diff+=360;
+      const maxTurn=120*dt;
+      if(Math.abs(diff)<maxTurn) ac.gHdg=targetHdg;
+      else ac.gHdg=(ac.gHdg+Math.sign(diff)*maxTurn+360)%360;
+    }
+  }
+}
+function moveAir(ac,dt){
+  const perf = getPerf(ac);
+
+  // ── 1. 600ft 前維持跑道航向 ──
+  if(ac.holdRwyHdg){
+    if(ac.altitude >= 600){
+      ac.holdRwyHdg = false;
+    } else {
+      const rwyHdg = ac.assignedRwy==='06' ? 63 : 243;
+      ac.targetHdg = rwyHdg;
+    }
+  }
+
+  // ── 2. airRoute 航點循跡 ──
+  if(!ac.holdRwyHdg && ac.airRoute && ac.airRouteIdx < ac.airRoute.length){
+    const wpt = ac.airRoute[ac.airRouteIdx];
+    const dx = wpt.x - ac.ax, dy = wpt.y - ac.ay;
+    const distNM = Math.sqrt(dx*dx + dy*dy);
+
+    if(wpt.spdMax && ac.aSpd > wpt.spdMax) ac.aSpd = wpt.spdMax;
+    if(wpt.altTarget !== undefined) ac.targetAlt = wpt.altTarget;
+
+    let hdgToWpt = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
+
+    // 在 FAP（最後進場點）後 → 維持 ILS 航向，不直飛座標
+    if(wpt.isFF && ac.clearedILS){
+      hdgToWpt = ac.assignedRwy==='06' ? 67 : 247;
+    }
+    // 已過 FAP 正在飛向 THR → 維持 ILS 航向
+    if(wpt.isTHR && ac.clearedILS){
+      hdgToWpt = ac.assignedRwy==='06' ? 67 : 247;
+    }
+    // 名稱確認（FAP_06 / FAP_24）
+    if((wpt.name==='FAP_06' || wpt.name==='RWY06') && ac.clearedILS) hdgToWpt = 67;
+    if((wpt.name==='FAP_24' || wpt.name==='RWY24') && ac.clearedILS) hdgToWpt = 247;
+
+    ac.targetHdg = hdgToWpt;
+
+    const captureR = wpt.isTHR ? 0.4 : (wpt.isFF ? 0.5 : 0.8);
+    if(distNM < captureR) ac.airRouteIdx++;
+  }
+
+  // ── 3. 平滑轉向 ──
+  if(ac.targetHdg !== null && ac.targetHdg !== undefined){
+    let d = ac.targetHdg - ac.aHdg;
+    while(d > 180) d -= 360; while(d < -180) d += 360;
+    const maxTurn = perf.turn_rate * dt;
+    if(Math.abs(d) < maxTurn) ac.aHdg = ac.targetHdg;
+    else ac.aHdg = (ac.aHdg + Math.sign(d)*maxTurn + 360) % 360;
+  }
+
+  // ── 4. 高度管理（從 AC_PERF 取值）──
+  if(ac.targetAlt !== undefined){
+    const altDiff = ac.targetAlt - ac.altitude;
+    let vs;
+    if(ac.cmdStep === 'FINAL_APPROACH') vs = perf.vs_final / 60;
+    else if(altDiff > 0)                vs = perf.vs_climb  / 60;
+    else                                vs = perf.vs_desc   / 60;
+    if(Math.abs(altDiff) < vs*dt) ac.altitude = ac.targetAlt;
+    else ac.altitude += Math.sign(altDiff) * vs * dt;
+  }
+
+  // ── 5. 速度管理（從 AC_PERF 取值）──
+  if(ac.cmdStep==='AIRBORNE_CLIMB'||ac.cmdStep==='DEP_APP'){
+    const tgt = ac.altitude > 10000 ? perf.spd_cruise : perf.spd_climb;
+    if(ac.aSpd < tgt) ac.aSpd = Math.min(ac.aSpd + 5*dt, tgt);
+  } else if(ac.cmdStep==='INBOUND'||ac.cmdStep==='SEQUENCING'||ac.cmdStep==='APPROACHING'){
+    if(ac.aSpd > perf.spd_approach) ac.aSpd = Math.max(ac.aSpd - 3*dt, perf.spd_approach);
+  } else if(ac.cmdStep==='FINAL_APPROACH'){
+    const tgt = ac.clearedILS ? perf.spd_land : perf.spd_approach;
+    if(ac.aSpd > tgt) ac.aSpd = Math.max(ac.aSpd - 4*dt, tgt);
+    else              ac.aSpd = Math.min(ac.aSpd + 2*dt, tgt);
+  }
+
+  // ── 6. 位置更新 ──
+  const rad = ac.aHdg * Math.PI / 180;
+  const nms = ac.aSpd / 3600;
+  ac.ax += Math.sin(rad) * nms * dt;
+  ac.ay += Math.cos(rad) * nms * dt;
+}
+
+// ══════════════════════════════════════
+// ATC PHRASE LIBRARY (realistic)
+// ══════════════════════════════════════
+const PHR={
+  DEL:{
+    CLEARANCE:(cs,dest,fl,sid,sq)=>
+      `${cs}，出發許可，目的地${dest}，飛行計畫航路，爬升至飛行高度層${fl}，離場程序${sid}，應答機${sq}，離地後聯繫塔台`,
+    READBACK:(cs,dest,fl,sid,sq)=>
+      `出發許可，目的地${dest}，FL${fl}，${sid}，應答機${sq}，${cs}`,
+  },
+  GND:{
+    PUSHBACK:(cs,gate,face)=>
+      `${cs}，後推許可，由${gate}機坪後推，面向${face}`,
+    PUSHBACK_READBACK:(cs,gate,face)=>
+      `後推，面向${face}，${gate}機坪，${cs}`,
+    TAXI:(cs,twy,hold,rwy)=>
+      `${cs}，地面許可，沿${twy}滑行，跑道${rwy}，${hold}等待點`,
+    TAXI_READBACK:(cs,twy,hold,rwy)=>
+      `${twy}，${hold}，跑道${rwy}，${cs}`,
+    HOLD:(cs)=>`${cs}，原地等待`,
+    HOLD_RB:(cs)=>`等待，${cs}`,
+    RESUME:(cs,twy)=>`${cs}，繼續沿${twy}滑行`,
+    RESUME_RB:(cs)=>`繼續，${cs}`,
+  },
+  TWR:{
+    LINEUP:(cs,rwy)=>
+      `${cs}，跑道${rwy}，進跑道並等待`,
+    LINEUP_RB:(cs,rwy)=>
+      `進跑道等待，跑道${rwy}，${cs}`,
+    TAKEOFF:(cs,rwy,wind)=>
+      `${cs}，跑道${rwy}，地面風${wind}，可以起飛`,
+    TAKEOFF_RB:(cs,rwy)=>
+      `跑道${rwy}，可以起飛，${cs}`,
+    LAND:(cs,rwy,wind)=>
+      `${cs}，跑道${rwy}，地面風${wind}，降落許可`,
+    LAND_RB:(cs,rwy)=>
+      `降落許可，跑道${rwy}，${cs}`,
+    GOAROUND:(cs)=>
+      `${cs}，重飛，重飛，上升至3000呎，保持跑道航向，聯繫進近`,
+    GOAROUND_RB:(cs)=>
+      `重飛，上升3000呎，保持跑道航向，${cs}`,
+    AIRBORNE:(cs)=>
+      `${cs}，離地，繼續爬升，聯繫${TAXI_CONFIG.comms.handoff_to_departure.transfer_name}${TAXI_CONFIG.comms.handoff_to_departure.transfer_freq}，再見`,
+    VACATE:(cs,twy)=>
+      `${cs}，脫離跑道後，聯繫${TAXI_CONFIG.comms.vacate.transfer_name}${TAXI_CONFIG.comms.vacate.transfer_freq}，使用${twy}`,
+  },
+  APP:{
+    CONTACT:(cs,alt,hdg)=>
+      `${cs}，高雄進近，雷達識別，下降並維持${alt}呎，航向${hdg}度`,
+    CONTACT_RB:(cs,alt,hdg)=>
+      `下降並維持${alt}呎，航向${hdg}，${cs}`,
+    SEQ:(cs,type,dist)=>
+      `${cs}，前方${type}，間距${dist}浬，保持現在速度`,
+    ILS:(cs,rwy,alt)=>
+      `${cs}，許可ILS進場，跑道${rwy}，下降至${alt}呎，報告建立航道`,
+    ILS_RB:(cs,rwy)=>
+      `許可ILS進場，跑道${rwy}，${cs}，建立航道後報告`,
+    VECTOR:(cs,hdg,reason)=>
+      `${cs}，雷達引導，航向${hdg}度，${reason}`,
+  },
+  AC:{
+    WILCO:(msg)=>`${msg}`,
+    READY:(cs,rwy)=>`管制，${cs}，在跑道${rwy}，等候起飛`,
+    REQ_CLR:(cs,gate,dest,fl)=>
+      `金門地面，${cs}，${gate}機坪，請求出發許可，目的地${dest}，申請飛行高度層${fl}`,
+  },
+};
+const W_=()=>String(wind.dir).padStart(3,'0')+'°/'+wind.spd+'KT';
+const SQ=()=>Math.floor(Math.random()*6000+1000).toString();
+
+// ══════════════════════════════════════
+// COMMANDS
+// ══════════════════════════════════════
+function getCmds(ac){
+  if(!ac) return [];
+  switch(ac.cmdStep){
+    case 'PROCESSING':   return []; // 通話中，暫無可用指令
+    case 'WAIT_REQ':   return [];
+    case 'WAIT_CLR':   return [{l:'出發許可 CLR',a:'CLR',seat:TAXI_CONFIG.comms.clearance.atc_seat}];
+    case 'WAIT_PBK':   return [
+      {l:'後推 PBK',a:'PBK',seat:TAXI_CONFIG.comms.pushback.atc_seat},
+    ];
+    case 'WAIT_RWY':   return [
+      {l:'跑道 06',a:'RWY06',seat:TAXI_CONFIG.comms.taxi.atc_seat,rwy:'06'},
+      {l:'跑道 24',a:'RWY24',seat:TAXI_CONFIG.comms.taxi.atc_seat,rwy:'24'},
+      {l:'取消',   a:'CANCEL_RWY',seat:'GND'},
+    ];
+    // 後推到 TWY N 停下，等玩家選繼續滑行
+    case 'WAIT_TAXI_RESUME':
+      if(ac.assignedRwy==='06') return [
+        {l:'繼續滑行→H-D',a:'TAXI_HD',seat:TAXI_CONFIG.comms.taxi.atc_seat},
+        {l:'繼續滑行→H-C',a:'TAXI_HC',seat:TAXI_CONFIG.comms.taxi.atc_seat},
+      ];
+      return [
+        {l:'繼續滑行→H-A',a:'TAXI_HA',seat:TAXI_CONFIG.comms.taxi.atc_seat},
+        {l:'繼續滑行→H-B',a:'TAXI_HB',seat:TAXI_CONFIG.comms.taxi.atc_seat},
+      ];
+    case 'TAXIING':    return [{l:'停止 HLD',a:'HLD',seat:TAXI_CONFIG.comms.taxi.atc_seat}];
+    // 到達等待點，玩家選起飛指令（TWR）
+    case 'WAIT_ENTRY': {
+      const twr = TAXI_CONFIG.comms.takeoff.atc_seat;
+      const lbl = ac.assignedHold || (ac.assignedRwy==='06'?'H-D':'H-A');
+      return [
+        {l:'許可起飛 T/O',  a:'TOF',      seat:twr},
+        {l:'跑道頭等待 LUP',a:'LUP',      seat:twr},
+        {l:'原地等待',       a:'HLD_WAIT', seat:twr},
+      ];
+    }
+    // 跑道頭等待後只剩許可起飛
+    case 'WAIT_LINEUP': return [{l:'許可起飛 T/O',a:'TOF',seat:TAXI_CONFIG.comms.takeoff.atc_seat}];
+    case 'AIRBORNE_CLIMB': return ac.handoffPending?[{l:'移交進近 →APP',a:'HANDOFF',seat:TAXI_CONFIG.comms.handoff_to_departure.atc_seat}]:[];
+    case 'DEP_APP':        return []; // 高雄進近管轄中，等待自動移交台北ACC
+    // ── APPROACHING：飛往CUBON途中，選擇跑道（高雄進近） ──
+    case 'APPROACHING': return [
+      {l:'指派 RWY06',a:'ASSIGN06',seat:TAXI_CONFIG.comms.approach.atc_seat,rwy:'06'},
+      {l:'指派 RWY24',a:'ASSIGN24',seat:TAXI_CONFIG.comms.approach.atc_seat,rwy:'24'},
+    ];
+    case 'INBOUND':    return [
+      {l:'ILS許可 RWY06',a:'ILS06',seat:TAXI_CONFIG.comms.ils_clearance.atc_seat},
+      {l:'ILS許可 RWY24',a:'ILS24',seat:TAXI_CONFIG.comms.ils_clearance.atc_seat},
+      {l:'向量引導',      a:'VEC',  seat:TAXI_CONFIG.comms.approach.atc_seat},
+    ];
+    case 'SEQUENCING': return [
+      {l:'ILS許可 RWY06',a:'ILS06',seat:TAXI_CONFIG.comms.ils_clearance.atc_seat},
+      {l:'ILS許可 RWY24',a:'ILS24',seat:TAXI_CONFIG.comms.ils_clearance.atc_seat},
+      {l:'向量引導',      a:'VEC',  seat:TAXI_CONFIG.comms.approach.atc_seat},
+    ];
+    case 'FINAL_APPROACH':
+      if(!ac.landingCleared) return [
+        {l:'降落許可',a:'LND',seat:TAXI_CONFIG.comms.landing.atc_seat},
+        {l:'重飛',    a:'GAR',seat:TAXI_CONFIG.comms.landing.atc_seat},
+      ];
+      return [{l:'重飛',a:'GAR',seat:TAXI_CONFIG.comms.landing.atc_seat}];
+    default: return [];
+  }
+}
+
+function execCmd(ac,a){
+  const cs=ac.callsign;
+
+  switch(a){
+    case 'CLR': {
+      const rwy = ac.assignedRwy || '06';
+      const sidName = rwy==='24' ? 'CUBON 1B' : 'CUBON 1A';
+      ac.sid = sidName;
+      ac.airRoute = SID_ROUTES[sidName] ? [...SID_ROUTES[sidName]] : [];
+      ac.airRouteIdx = 0;
+      ac.holdRwyHdg = true;
+      ac.reqFlash = false;
+      ac.cmdStep = 'PROCESSING'; // 暫時狀態：通話中，沒有可用指令
+      const sq=SQ();
+      qC([
+        {seat:TAXI_CONFIG.comms.clearance.atc_seat,cs,msg:PHR.DEL.CLEARANCE(cs,ac.destination,ac.fl,sidName,sq),type:'atc'},
+        {seat:'AC', cs,msg:PHR.DEL.READBACK(cs,ac.destination,ac.fl,sidName,sq),type:'ac'},
+      ],()=>{ ac.cmdStep='WAIT_PBK'; ac.reqFlash=true; updateUI(); });
+      break;
+    }
+
+    case 'PBK':
+      ac.cmdStep='WAIT_RWY';
+      ac.reqFlash=false;
+      updateUI();
+      break;
+
+    case 'RWY06':
+    case 'RWY24': {
+      const rwy = a==='RWY06' ? '06' : '24';
+      ac.assignedRwy = rwy;
+      ac.reqFlash = false;
+      const face = rwy==='06' ? '西' : '東'; // 06跑道後推後機頭面西（往H-D方向），24跑道面東（往H-A方向）
+      // 只發後推指令，滑行指令待玩家在 TWY N 停下後再發
+      qC([
+        {seat:TAXI_CONFIG.comms.pushback.atc_seat,cs,msg:PHR.GND.PUSHBACK(cs,ac.gate,face),type:'atc'},
+        {seat:'AC',cs,msg:PHR.GND.PUSHBACK_READBACK(cs,ac.gate,face),type:'ac'},
+      ],()=>{ updateUI(); });
+      // 後推路線：機位 → TWY N（y=TWY_N_Y），到達後停下
+      ac.taxiRoute = [{ x: ac.gx, y: TWY_N_Y, isPushback: true }];
+      ac.taxiIdx = 0; ac.gSpd = 2;
+      ac.cmdStep = 'TAXIING';
+      ac.reqFlash = false; // 滑行中不亮 REQ
+      break;
+    }
+
+    // 到達 TWY N 後玩家選擇目標等待點
+    case 'TAXI_HD': case 'TAXI_HC': case 'TAXI_HA': case 'TAXI_HB': {
+      const holdKey = {TAXI_HD:'H-D',TAXI_HC:'H-C',TAXI_HA:'H-A',TAXI_HB:'H-B'}[a];
+      const hp = HOLDPOINTS[holdKey];
+      ac.assignedHold = holdKey;
+      qC([
+        {seat:TAXI_CONFIG.comms.taxi.atc_seat,cs,msg:PHR.GND.TAXI(cs,'TWY N',hp.label,ac.assignedRwy),type:'atc'},
+        {seat:'AC',cs,msg:PHR.GND.TAXI_READBACK(cs,'TWY N',hp.label,ac.assignedRwy),type:'ac'},
+      ],()=>{ updateUI(); });
+      // 從 TWY N 滑至等待點（連接道北端），到達後停下等 TWR 指令
+      ac.taxiRoute = [{ x: hp.x, y: TWY_N_Y }, { x: hp.x, y: hp.y }];
+      ac.taxiIdx = 0; ac.gSpd = 5;
+      ac.cmdStep = 'TAXIING';
+      ac.reqFlash = false; // 滑行中不亮 REQ
+      break;
+    }
+
+    case 'HLD_WAIT':
+      // 原地等待（TWR指令）
+      qC([
+        {seat:TAXI_CONFIG.comms.lineup.atc_seat,cs,msg:`${cs}，${ac.assignedHold||'等待點'}，原地等待`,type:'atc'},
+        {seat:'AC',cs,msg:`原地等待，${cs}`,type:'ac'},
+      ],()=>{ updateUI(); });
+      // 不改變 cmdStep，保持 WAIT_ENTRY
+      break;
+
+    case 'CANCEL_RWY':
+      // 取消，回到後推待命狀態
+      ac.cmdStep='WAIT_PBK';
+      ac.reqFlash=false;
+      updateUI();
+      break;
+
+    case 'HLD':
+      ac.taxiIdx=ac.taxiRoute.length; // 停在原地
+      setMsg(cs+' 停止');
+      break;
+
+    // HOLD_ENTRY 已移除（由 HLD_WAIT 取代）
+
+    // 舊 LUP 已合併至 TOF/LUP 新邏輯
+
+    case 'TOF':
+    case 'LUP': {
+      const rwy = ac.assignedRwy||'06';
+      const hold = ac.assignedHold || (rwy==='06'?'H-D':'H-A');
+      const isImmediate = (a==='TOF'); // TOF=立即起飛，LUP=跑道頭等待
+
+      if(isImmediate){
+        qC([
+          {seat:TAXI_CONFIG.comms.takeoff.atc_seat,cs,msg:PHR.TWR.TAKEOFF(cs,rwy,W_()),type:'atc'},
+          {seat:'AC',cs,msg:PHR.TWR.TAKEOFF_RB(cs,rwy),type:'ac'},
+        ],null);
+      } else {
+        qC([
+          {seat:TAXI_CONFIG.comms.lineup.atc_seat,cs,msg:PHR.TWR.LINEUP(cs,rwy),type:'atc'},
+          {seat:'AC',cs,msg:PHR.TWR.LINEUP_RB(cs,rwy),type:'ac'},
+        ],null);
+      }
+      ac.reqFlash = false;
+
+      if(rwy==='06'){
+        // RWY06：從 H-C 或 H-D 進跑道 → 向西滑至 DTHR → 360° 迴轉 → 向東起飛
+        const connX = CONN[hold==='H-C'?'C':'D'];
+        const dthrX = DTHR06.x + 30;
+        ac.taxiRoute = [
+          { x: connX, y: RWY_Y },  // 從等待點進入跑道
+          { x: dthrX, y: RWY_Y },  // 向西滑至 DTHR
+        ];
+        ac.taxiIdx=0; ac.gSpd=5;
+        ac.cmdStep='TAXIING_TO_RWY';
+        const chk06 = setInterval(()=>{
+          if(ac.taxiIdx >= ac.taxiRoute.length){
+            clearInterval(chk06);
+            ac.gx=dthrX; ac.gy=RWY_Y;
+            ac.gHdg=270; ac.gSpd=0;
+            ac.onRwy=true; ac.rwyRollDist=0;
+            ac.cmdStep = 'TURNING_06';
+            ac._afterTurn = isImmediate ? 'TAKEOFF_ROLL' : 'WAIT_LINEUP';
+            ac.waitTimer=0;
+            updateUI();
+          }
+        },100);
+
+      } else {
+        // RWY24 H-A：TWY A 直接進跑道 → 180° 轉頭向西
+        // RWY24 H-B：TWY B 進跑道 → 滑到 THR24 → 180° 轉頭向西
+        const connX = CONN[hold==='H-A'?'A':'B'];
+        const needSlideToThr = (hold==='H-B');
+        const taxiPts = needSlideToThr
+          ? [{ x: connX, y: RWY_Y }, { x: THR24.x - 20, y: RWY_Y }]
+          : [{ x: connX, y: RWY_Y }];
+        ac.taxiRoute = taxiPts;
+        ac.taxiIdx=0; ac.gSpd=5;
+        ac.cmdStep='TAXIING_TO_RWY';
+        const chk24 = setInterval(()=>{
+          if(ac.taxiIdx >= ac.taxiRoute.length){
+            clearInterval(chk24);
+            ac.gx = needSlideToThr ? THR24.x-20 : connX;
+            ac.gy = RWY_Y;
+            ac.gHdg = 90; ac.gSpd = 0;  // 朝東（剛進來的方向）
+            ac.onRwy=true; ac.rwyRollDist=0;
+            ac.cmdStep = 'TURNING_24';
+            ac._afterTurn = isImmediate ? 'TAKEOFF_ROLL' : 'WAIT_LINEUP';
+            ac.waitTimer=0;
+            updateUI();
+          }
+        },100);
+      }
+      break;
+    }
+
+    // ── 指派進場跑道（APPROACHING狀態）──
+    case 'ASSIGN06':
+    case 'ASSIGN24': {
+      const rwy = a==='ASSIGN24' ? '24' : '06';
+      const routeKey = rwy==='06' ? 'CUBON-1C-06' : 'CUBON-2D-24';
+      const starName = rwy==='06' ? 'CUBON 1C' : 'CUBON 2D';
+      ac.assignedRwy = rwy;
+      ac.rwyAssigned = true;
+      ac.reqFlash = false;
+      ac.pendingArrRoute = routeKey;
+      qC([
+        {seat:'APP',cs,msg:`${cs}，許可ILS跑道${rwy}進場，${starName}，下降並維持8000呎`,type:'atc'},
+        {seat:'AC', cs,msg:`ILS跑道${rwy}，${starName}，下降8000呎，${cs}`,type:'ac'},
+      ],()=>{ updateUI(); });
+      updateUI();
+      break;
+    }
+
+        case 'HANDOFF':
+      // 塔台移交高雄進近（離場）
+      qC([
+        {seat:'TWR',cs,msg:`${cs}，聯繫高雄進近124.6，再見`,type:'atc'},
+        {seat:'AC', cs,msg:PHR.AC.WILCO(`高雄進近124.6，${cs}，再見`),type:'ac'},
+      ],()=>{
+        ac.cmdStep='DEP_APP';
+        ac.handoffPending=false;
+        ac.reqFlash=false;
+        updateUI();
+      });
+      setMsg(cs+' 已移交高雄進近 124.6');
+      break;
+
+    // ── 進場指令（高雄進近管） ──
+    case 'D4K':
+      qC([{seat:'APP',cs,msg:PHR.APP.CONTACT(cs,'4000',Math.round(ac.aHdg)),type:'atc'},
+          {seat:'AC', cs,msg:PHR.APP.CONTACT_RB(cs,'4000',Math.round(ac.aHdg)),type:'ac'}],
+        ()=>{ac.targetAlt=4000; ac.cmdStep='SEQUENCING';}); break;
+    case 'D2K':
+      qC([{seat:'APP',cs,msg:PHR.APP.CONTACT(cs,'2000',Math.round(ac.aHdg)),type:'atc'},
+          {seat:'AC', cs,msg:PHR.APP.CONTACT_RB(cs,'2000',Math.round(ac.aHdg)),type:'ac'}],
+        ()=>{ac.targetAlt=2000; ac.cmdStep='SEQUENCING';}); break;
+    case 'ILS06':
+    case 'ILS24':
+    case 'ILS': {
+      const ilsRwy = a==='ILS24' ? '24' : '06';
+      ac.assignedRwy = ilsRwy;
+
+      // 選擇進場路線：依飛機目前位置選最近 IAF
+      let routeKey;
+      if(ilsRwy==='06'){
+        const distToCubon = Math.sqrt((ac.ax-WPT.CUBON.x)**2+(ac.ay-WPT.CUBON.y)**2);
+        routeKey = distToCubon < 10 ? 'CUBON-1C-06' : 'ILS-SANDY-06';
+      } else {
+        const distToCubon = Math.sqrt((ac.ax-WPT.CUBON.x)**2+(ac.ay-WPT.CUBON.y)**2);
+        routeKey = distToCubon < 10 ? 'CUBON-2D-24' : 'ILS-AMTIK-24';
+      }
+
+      // 從距飛機最近的剩餘航點開始
+      const fullRoute = [...(ARR_ROUTES[routeKey] || [])];
+      let startIdx = 0, minDist = Infinity;
+      fullRoute.forEach((wpt,i)=>{
+        if(wpt.isTHR) return;
+        const d = Math.sqrt((ac.ax-wpt.x)**2+(ac.ay-wpt.y)**2);
+        if(d < minDist){ minDist=d; startIdx=i; }
+      });
+      ac.airRoute = fullRoute.slice(startIdx);
+      ac.airRouteIdx = 0;
+      ac.holdRwyHdg = false;
+
+      // APP發ILS許可，並在readback後自動移交金門塔台
+      qC([
+        {seat:'APP',cs,msg:PHR.APP.ILS(cs,ilsRwy,'2000'),type:'atc'},
+        {seat:'AC', cs,msg:PHR.APP.ILS_RB(cs,ilsRwy),type:'ac'},
+        {seat:'APP',cs,msg:`${cs}，聯繫金門塔台118.0，再見`,type:'atc'},
+        {seat:'AC', cs,msg:`金門塔台118.0，${cs}，再見`,type:'ac'},
+      ],()=>{
+        ac.cmdStep='FINAL_APPROACH';
+        ac.clearedILS=true;
+        ac.aSpd=155;
+        // 飛機呼叫塔台建立最後進場
+        setTimeout(()=>{
+          qC([{seat:'AC',cs,
+            msg:`金門塔台，${cs}，ILS跑道${ilsRwy}，最後進場，請求降落許可`,
+            type:'ac'}],()=>{ac.reqFlash=true; updateUI();});
+        }, 800);
+        updateUI();
+      });
+      break;
+    }
+    case 'LND':
+      ac.landingCleared=true;
+      qC([{seat:'TWR',cs,msg:PHR.TWR.LAND(cs,ac.assignedRwy||'06',W_()),type:'atc'},
+          {seat:'AC', cs,msg:PHR.TWR.LAND_RB(cs,ac.assignedRwy||'06'),type:'ac'}],
+        ()=>{ updateUI(); }); break;
+    case 'GAR':
+      qC([{seat:'TWR',cs,msg:PHR.TWR.GOAROUND(cs),type:'atc'},
+          {seat:'AC', cs,msg:PHR.TWR.GOAROUND_RB(cs),type:'ac'}],
+        ()=>{ac.cmdStep='SEQUENCING';ac.clearedILS=false;ac.targetAlt=3000;ac.aSpd=200;}); break;
+    case 'VEC': {
+      const nh=Math.round((ac.aHdg+30)%360);
+      qC([{seat:'APP',cs,msg:PHR.APP.VECTOR(cs,nh,'排序間距'),type:'atc'},
+          {seat:'AC', cs,msg:PHR.AC.WILCO(`航向${nh}，${cs}`),type:'ac'}],
+        ()=>{ac.targetHdg=nh; ac.airRoute=[]; ac.airRouteIdx=0;}); break;
+    }
+  }
+  updateUI();
+}
+
+// 建立滑行路線（像素座標）：後推→TWY N→連接道→等待點
+// buildTaxiRoute 已由 execCmd 內的路線邏輯取代
+function buildTaxiRoute(ac, holdPt){ return []; }
+
+function getTaxiPreview(ac, rwy){
+  const holdKey = ac.assignedHold || (rwy==='06'?'H-D':'H-A');
+  const hp = HOLDPOINTS[holdKey] || (rwy==='06'?HOLD_06:HOLD_24);
+  return [
+    { x: ac.gx, y: TWY_N_Y },
+    { x: hp.x,  y: TWY_N_Y },
+    { x: hp.x,  y: hp.y    },
+  ];
+}
+
+// ══════════════════════════════════════
+// TYPEWRITER COMMS
+// ══════════════════════════════════════
+function qC(lines,onDone){
+  twQueue.push({lines,onDone,idx:0});
+  if(!twTimer) processQueue();
+}
+let atcSpeaking = false; // ATC 正在發話時為 true，飛機不能移動（AC回話時可移動）
+
+function processQueue(){
+  twTimer=null;
+  if(!twQueue.length){ atcSpeaking=false; return; }
+  const job=twQueue[0];
+  if(job.idx>=job.lines.length){
+    twQueue.shift();
+    if(job.onDone) setTimeout(job.onDone, 150);
+    twTimer=setTimeout(processQueue, 60);
+    return;
+  }
+  const e=job.lines[job.idx++];
+  // 間隔計算：ATC→AC 或 AC→ATC 之間固定 3 遊戲秒
+  // 3 遊戲秒 = 3000 / GAME_SPEED 毫秒（真實時間）
+  const INTER_MSG_DELAY = Math.round(3000 / GAME_SPEED); // ms
+  const delay = e.type==='ac' ? INTER_MSG_DELAY : 0;
+  // ATC 發話期間鎖定移動；AC 回話期間解鎖
+  atcSpeaking = (e.type==='atc');
+  twTimer=setTimeout(()=>{
+    typeLine(e, ()=>{
+      if(e.type==='atc') atcSpeaking=false; // ATC 訊息結束，解鎖
+      twTimer=setTimeout(processQueue, INTER_MSG_DELAY); // 訊息結束後也等間隔
+    });
+  }, delay);
+}
+// Track which channel the last ATC message used
+let lastAtcSeatKey = null;
+let activeTypingEl = null; // currently typing message element — prevents visual overlap
+
+function typeLine(entry,onDone){
+  const{seat,cs,msg,type}=entry;
+  cLog.unshift({seat,msg,type,t:gTime});
+  if(cLog.length>100)cLog.pop();
+
+  // Determine badge class, label, message class
+  let badgeCls, badgeLabel, msgCls;
+  if(seat==='TWR'){
+    badgeCls='twr'; badgeLabel='TWR'; msgCls='twr-txt';
+    lastAtcSeatKey='twr';
+  } else if(seat==='APP'){
+    badgeCls='app'; badgeLabel='APP'; msgCls='app-txt';
+    lastAtcSeatKey='app';
+  } else if(seat==='GND'||seat==='DEL'){
+    badgeCls='gnd'; badgeLabel='GND'; msgCls='gnd-txt';
+    lastAtcSeatKey='gnd';
+  } else if(seat==='ATIS'){
+    badgeCls='atis'; badgeLabel='ATIS'; msgCls='atis-txt';
+    lastAtcSeatKey='atis';
+  } else {
+    badgeCls='ac'; badgeLabel='A/C'; msgCls='ac-txt';
+  }
+
+  const log=document.getElementById('ch-log');
+  if(log){
+    // Build the new row
+    const row=document.createElement('div');
+    row.className='ch-entry new-entry';
+
+    const badgeWrap=document.createElement('div');
+    badgeWrap.className='ch-entry-badge';
+    const sq=document.createElement('span');
+    sq.className='ch-badge-sq '+badgeCls;
+    sq.textContent=badgeLabel;
+    badgeWrap.appendChild(sq);
+
+    const msgEl=document.createElement('span');
+    msgEl.className='ch-entry-msg '+msgCls;
+
+    row.appendChild(badgeWrap);
+    row.appendChild(msgEl);
+
+    // Insert at top
+    log.insertBefore(row, log.firstChild);
+    // Trim to max 30 entries
+    while(log.children.length>30) log.removeChild(log.lastChild);
+
+    // Mark this as the active typing element
+    activeTypingEl=msgEl;
+
+    // Typewriter — character by character
+    let i2=0; const chars2=[...msg];
+    function tick2(){
+      if(i2<chars2.length){
+        msgEl.textContent+=chars2[i2++];
+        setTimeout(tick2, TW_SPD);
+      } else {
+        activeTypingEl=null;
+        if(onDone) onDone();
+      }
+    }
+    tick2();
+    return;
+  }
+  if(onDone) onDone();
+}
+function fSeat(s){ cFilt=s; }
+
+// ══════════════════════════════════════
+// CANVAS CLICK
+// ══════════════════════════════════════
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  let found=null, bestDist=999;
+  Object.values(ACs).forEach(ac=>{
+    let px,py;
+    if(isGnd(ac.cmdStep)){
+      const pos=getACPos(ac); px=pos.px; py=pos.py;
+    } else {
+      // Air AC drawn on ground view via nm2gCanvas
+      const p=nm2gCanvas(ac.ax,ac.ay); px=p.x; py=p.y;
+    }
+    const d=Math.sqrt((mx-px)**2+(my-py)**2);
+    if(d<30 && d<bestDist){ bestDist=d; found=ac; }
+  });
+  sel = found ? found.id : null;
+  updateUI();
+});
+
+// ══════════════════════════════════════
+// STRIP CLICK
+// ══════════════════════════════════════
+function selectStrip(id){
+  sel=id;
+  updateUI();
+}
+
+// ══════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════
+function posText(ac){
+  const s=ac.cmdStep;
+  switch(s){
+    case 'PROCESSING':    return `通話中...`;
+    case 'WAIT_REQ':     return `停機 ${ac.gate} ⏳`;
+    case 'WAIT_CLR':     return `停機 ${ac.gate} — 等許可`;
+    case 'WAIT_PBK':     return `停機 ${ac.gate} — 等後推`;
+    case 'WAIT_RWY':        return `停機 ${ac.gate} — 選擇跑道`;
+    case 'TAXIING':         return ac.assignedHold
+                              ? `TWY N → ${ac.assignedHold}`
+                              : `後推中 → TWY N`;
+    case 'WAIT_TAXI_RESUME':return `TWY N — 等待滑行指示`;
+    case 'TAXIING_TO_RWY':  return `進入跑道 ${ac.assignedRwy}`;
+    case 'WAIT_ENTRY':      return `${ac.assignedHold||'等待點'} — 等起飛許可`;
+    case 'WAIT_LINEUP':     return `RWY ${ac.assignedRwy} 跑道頭等待`;
+    case 'TURNING_06':      return `DTHR 360° 迴轉中`;
+    case 'TURNING_24':      return `THR24 180° 轉頭中`;
+    case 'TAKEOFF_ROLL':    return `RWY ${ac.assignedRwy} 起飛滾行 ↑`;
+    case 'AIRBORNE_CLIMB': return `爬升中 ${Math.round(ac.altitude)}ft`;
+    case 'DEP_APP':        return `高雄進近 ${Math.round(ac.altitude)}ft`;
+    case 'APPROACHING':    return `進入TMA ${Math.round(ac.altitude)}ft`;
+    case 'INBOUND':        return `進場中 ${Math.round(ac.altitude)}ft`;
+    case 'SEQUENCING':     return `引導排序 ${Math.round(ac.altitude)}ft`;
+    case 'FINAL_APPROACH': return `ILS RWY${ac.assignedRwy||'06'} 最終進場`;
+    case 'LANDED':       return `落地滑行 RWY${ac.assignedRwy||'06'}`;
+    default: return s;
+  }
+}
+function posClass(ac){
+  const s=ac.cmdStep;
+  if(['WAIT_REQ','WAIT_CLR','WAIT_PBK','WAIT_RWY','TAXIING','WAIT_TAXI_RESUME','TAXIING_TO_RWY'].includes(s)) return 'gnd';
+  if(['WAIT_ENTRY','WAIT_LINEUP','TURNING_06','TURNING_24','TAKEOFF_ROLL','LANDED'].includes(s)) return 'rwy';
+  if(s==='FINAL_APPROACH') return 'app';
+  return 'air';
+}
+function badgeCls(ac){
+  const s=ac.cmdStep;
+  if(['WAIT_REQ','WAIT_CLR','WAIT_PBK','WAIT_RWY','TAXIING','WAIT_TAXI_RESUME','TAXIING_TO_RWY'].includes(s)) return 'b-gnd';
+  if(['WAIT_ENTRY','WAIT_LINEUP','TURNING_06','TURNING_24','TAKEOFF_ROLL','LANDED'].includes(s)) return 'b-rwy';
+  if(s==='FINAL_APPROACH') return 'b-app';
+  return 'b-air';
+}
+function badgeTxt(ac){
+  const s=ac.cmdStep;
+  const m={
+    PROCESSING:'通話中',WAIT_REQ:'停機',WAIT_CLR:'等許可',WAIT_PBK:'等後推',WAIT_RWY:'選跑道',
+    TAXIING:'滑行',WAIT_TAXI_RESUME:'TWY N等',TAXIING_TO_RWY:'進跑道',
+    WAIT_ENTRY:'等起飛',WAIT_LINEUP:'跑道頭等',TAKEOFF_ROLL:'起飛',
+    TURNING_06:'迴轉',TURNING_24:'轉頭',
+    AIRBORNE_CLIMB:'爬升',DEP_APP:'高雄進近',APPROACHING:'進入TMA',
+    INBOUND:'進場',SEQUENCING:'排序',FINAL_APPROACH:'ILS進場',
+    LANDED:'落地'
+  };
+  return m[s]||s;
+}
+function isGnd(s){
+  return['WAIT_REQ','WAIT_CLR','PROCESSING','WAIT_PBK','WAIT_RWY',
+         'TAXIING','WAIT_TAXI_RESUME','TAXIING_TO_RWY',
+         'WAIT_ENTRY','WAIT_LINEUP',
+         'TURNING_06','TURNING_24','TAKEOFF_ROLL','LANDED'].includes(s);
+}
+function setMsg(t){ /* status bar removed in v24 */ }
+function setView(v){ view=v; } // kept for compatibility; both canvases always render
+
+// AC image path
+function acImgSrc(airline,type){
+  const al_code=airline==='立榮航空'?'B7':airline==='華信航空'?'AE':airline==='中華民國空軍'?'ROCAF':'XX';
+  const ty=type.replace(/[\s\-]/g,'').replace('/','');
+  return `/image/${al_code}-${ty}.jpg`;
+}
+
+// ══════════════════════════════════════
+// UI UPDATE
+// ══════════════════════════════════════
+function updateClock(){
+  const t=gTime;
+  const h=Math.floor(t/3600)%24, m=Math.floor((t%3600)/60), s=Math.floor(t%60);
+  const str=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const el=document.getElementById('clock-sm');
+  if(el) el.textContent=str;
+}
+
+function updateUI(){
+  updateClock();
+
+  // ── 中間欄：選中航班詳情 ──
+  const ac=sel?ACs[sel]:null;
+
+  const imgBox=document.getElementById('ac-img-box');
+  const infoText=document.getElementById('ac-info-text');
+
+  if(ac && imgBox && infoText){
+    const gnd=isGnd(ac.cmdStep);
+    const imgSrc=acImgSrc(ac.airline,ac.type);
+    imgBox.innerHTML=`<img src="${imgSrc}" alt="${ac.type}"
+      onerror="this.parentElement.innerHTML='<div id=\\"ac-img-placeholder\\">${ac.type}</div>'">`;
+    // Air: show alt+spd, hide gate/rwy. Ground: show gate/rwy, hide alt+spd
+    const airInfo=!gnd
+      ?`<div class="ac-row">高度 <span>${Math.round(ac.altitude/100)*100}ft</span> &nbsp; 速度 <span>${Math.round(ac.aSpd)}kt</span> &nbsp; 航向 <span>${String(Math.round(ac.aHdg)%360).padStart(3,'0')}°</span></div>`
+      :'';
+    const gndInfo=gnd
+      ?`<div class="ac-row">機坪 <span>${ac.gate||'—'}</span>${ac.assignedRwy?` &nbsp; 跑道 <span>RWY ${ac.assignedRwy}</span>`:''}</div>`
+      :'';
+    infoText.innerHTML=`
+      <div id="ac-cs-big">${ac.callsign}</div>
+      <div id="ac-airline-lbl">${ac.airline} &nbsp;<span style="color:var(--t3);font-family:var(--mono);font-size:10px">${ac.type}</span></div>
+      <div class="ac-row">${gnd?`目的地 <span>${ac.destination}</span>`:`來自 <span>${ac.origin}</span>`}</div>
+      ${airInfo}${gndInfo}`;
+  } else if(imgBox && infoText){
+    imgBox.innerHTML='<div id="ac-img-placeholder">— 點選航機 —</div>';
+    infoText.innerHTML='<div id="ac-empty-msg">選擇左側或右側<br>管制條以顯示詳情</div>';
+  }
+
+  rebuildCmds(ac);
+  rebuildStrips();
+  updateChannels();
+}
+
+// Update ATC channel callsign displays
+function updateChannels(){
+  // 三個頻道徽章恆亮
+  ['badge-app','badge-twr','badge-gnd'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.classList.add('on');
+  });
+}
+
+function rebuildCmds(ac){
+  const btns=document.getElementById('cmd-btns');
+  if(!btns) return;
+  if(ac){
+    const cmds=getCmds(ac);
+    btns.innerHTML='';
+    if(!cmds.length){
+      btns.innerHTML='<span style="color:var(--t3);font-size:11px;font-family:var(--mono)">— 等待指示 —</span>';
+      return;
+    }
+    cmds.forEach(cmd=>{
+      const b=document.createElement('button');
+      b.className='cb seat-'+(cmd.seat||'GND');
+      const seatCls={DEL:'DEL',GND:'GND',TWR:'TWR',APP:'APP'}[cmd.seat]||'GND';
+      b.innerHTML=`<span class="cb-seat-lbl ${seatCls}">[${cmd.seat}]</span>${cmd.l}`;
+      b.dataset.action=cmd.a;
+      b.dataset.acid=ac.id;
+      if(cmd.rwy){
+        b.addEventListener('mouseenter',()=>{ ac.previewRwy=cmd.rwy; });
+        b.addEventListener('mouseleave',()=>{ ac.previewRwy=null; });
+      }
+      btns.appendChild(b);
+    });
+  } else {
+    btns.innerHTML='<span style="color:var(--t3);font-size:11px;font-family:var(--mono)">— 點選航機後顯示指令 —</span>';
+  }
+}
+
+function rebuildStrips(){
+  const sdep=document.getElementById('sdep');
+  const sarr=document.getElementById('sarr');
+  if(!sdep||!sarr) return;
+
+  sdep.innerHTML=''; sarr.innerHTML='';
+
+  const DEP=['WAIT_REQ','WAIT_CLR','PROCESSING','WAIT_PBK','WAIT_RWY',
+             'TAXIING','WAIT_TAXI_RESUME','TAXIING_TO_RWY',
+             'WAIT_ENTRY','WAIT_LINEUP',
+             'TURNING_06','TURNING_24','TAKEOFF_ROLL','AIRBORNE_CLIMB','DEP_APP'];
+  const ARR=['APPROACHING','INBOUND','SEQUENCING','FINAL_APPROACH','LANDED'];
+  let dc=0, ac2=0;
+  let firstDep=null, firstArr=null;
+
+  // If selected AC no longer exists, clear selection
+  if(sel && !ACs[sel]){
+    // Try to find another AC to select
+    const remaining=Object.values(ACs);
+    sel = remaining.length ? remaining[0].id : null;
+  }
+
+  Object.values(ACs).forEach(a=>{
+    const isDep=DEP.includes(a.cmdStep);
+    const isArr=ARR.includes(a.cmdStep);
+    if(!isDep&&!isArr) return;
+
+    const isSel=a.id===sel;
+    if(isDep){ dc++; if(!firstDep) firstDep=a.id; }
+    else      { ac2++; if(!firstArr) firstArr=a.id; }
+
+    const div=document.createElement('div');
+    div.className=`fs ${isDep?'dep':'arr'}${isSel?' sel':''}${a.reqFlash?' req-flash':''}`;
+    div.dataset.acid=a.id;
+
+    const destIcao=AIRPORT_ICAO[a.destination]||a.destination;
+    const origIcao=AIRPORT_ICAO[a.origin]||a.origin;
+    const routeTxt=isDep
+      ?`→ ${a.destination} <span style="color:var(--t2);font-size:9px">${destIcao}</span>`
+      :`← ${a.origin} <span style="color:var(--t2);font-size:9px">${origIcao}</span>`;
+
+    div.innerHTML=`
+      <div class="fs-top">
+        <span class="fs-cs">${a.callsign}</span>
+        ${a.reqFlash?'<span class="req-tag">REQ</span>':''}
+      </div>
+      <div class="fs-bot">
+        <span class="fs-ty">${a.type}</span>
+        <span class="fs-route">${routeTxt}</span>
+        <span class="fs-pos ${posClass(a)}">${posText(a)}</span>
+      </div>`;
+
+    (isDep?sdep:sarr).appendChild(div);
+  });
+
+  document.getElementById('cnt-dep').textContent=dc;
+  document.getElementById('cnt-arr').textContent=ac2;
+}
+
+// ══════════════════════════════════════
+// SPAWN
+// ══════════════════════════════════════
+function broadcastATIS(){
+  const atisMsg=`金門機場情報資訊甲，跑道使用中06，地面風050度12節，能見度10公里，晴天，QNH 1013，進場ILS跑道06，離場程序CUBON 1A，情報甲`;
+  qC([{seat:'ATIS',cs:'ATIS',msg:atisMsg,type:'atc'}],null);
+}
+
+function spawnInitial(){
+  resize();
+  // ── 從 taxi_config.js 的 initial_aircraft 讀取初始場景 ──
+  TAXI_CONFIG.initial_aircraft.forEach(cfg => {
+    const gate = GATES[cfg.gate];
+    if(!gate){ console.warn('spawnInitial: 找不到機位', cfg.gate); return; }
+    const ac = makeAC({
+      callsign:    cfg.callsign,
+      airline:     cfg.airline,
+      type:        cfg.type,
+      cat:         cfg.cat,
+      gate:        cfg.gate,
+      gx:          gate.x,
+      gy:          gate.y,
+      destination: cfg.destination,
+      depTime:     cfg.dep_time,
+      fl:          cfg.fl,
+    });
+    ac.waitTimer = cfg.wait_timer ?? 10;
+    ACs[ac.id] = ac;
+  });
+  updateRunwayLights();
+  updateUI();
+}
+
+// ══════════════════════════════════════
+// MAIN LOOP
+// ══════════════════════════════════════
+spawnInitial();
+broadcastATIS();
+function loop(ts){
+  const dt=(ts-lastT)/1000; lastT=ts;
+  if(dt>0&&dt<0.5){update(dt*GAME_SPEED);}
+  render();
+  // Update wind/lights and clock every second, not every frame
+  const sec=Math.floor(gTime);
+  if(sec!==loop._lastSec){
+    loop._lastSec=sec;
+    updateClock();
+    if(sec%5===0){drawWindIndicator(); updateRunwayLights();}
+  }
+  requestAnimationFrame(loop);
+}
+loop._lastSec=-1;
+requestAnimationFrame(ts=>{lastT=ts;requestAnimationFrame(loop);});
+</script>
+</body>
+</html>

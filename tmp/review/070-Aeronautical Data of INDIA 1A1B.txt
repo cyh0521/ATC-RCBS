@@ -1,0 +1,35 @@
+WAYPOINT LIST (WGS84) 
+INDIA ONE ALFA RNAV DEPARTURE (RWY06) 
+INDIA ONE BRAVO RNAV DEPARTURE (RWY24) 
+Waypoint Name Latitude Longitude Waypoint Name Latitude Longitude 
+BS001 241758.00N 1184002.00E BS002 241738.68N 1181634.45E 
+INDIA 240604.23N 1185126.99E 
+Seq No 
+Path 
+Termi- 
+nator 
+Fix 
+Identifier 
+(Waypoint 
+Name) 
+Fly 
+Over Course °M (°T) 
+Turn 
+Direction 
+Altitude 
+(ft) 
+Speed 
+Limit(kt) 
+Vertical 
+Angle 
+Navigation 
+Specification 
+INDIA ONE ALFA RNAV DEPARTURE (RWY06) 
+01 VA - - 067(063.36) - +600 - - RNAV 1 
+02 DF BS001 - - - - - - RNAV 1 
+03 TF INDIA - 143(138.60) - - - - RNAV 1 
+INDIA ONE BRAVO RNAV DEPARTURE (RWY24) 
+01 VA - - 247(243.39) - +600 -250 - RNAV 1 
+02 DF BS002 - - - - -250 - RNAV 1 
+03 TF INDIA - 114(109.77) - - - - RNAV 1 
+. 

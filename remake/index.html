@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f3e9"><title>金門塔台 · RCBS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="金門塔台全景"><span class="brand-icon">✳</span><div><span class="eyebrow">KINMEN AIR TRAFFIC CONTROL</span><h1>金門塔台<span>RCBS</span></h1></div></a>
+    <div class="watch"><span class="sun-icon">☀</span><div><small id="scenario-name">晨光・第一班</small><strong id="clock">08:00:00</strong></div></div>
+    <div class="weather"><small>地面風</small><strong id="wind">050° / 12 KT</strong></div>
+    <div class="rwy-indicator"><small>使用跑道</small><strong id="rwy">06</strong></div>
+    <nav class="toolbar" aria-label="模擬控制">
+      <button id="pause" class="primary">▶ 開始</button>
+      <div class="speed-controls" aria-label="時間倍率"><button data-speed="1">1×</button><button data-speed="4" class="active">4×</button><button data-speed="12">12×</button></div>
+      <button id="sound" class="icon-button" title="切換無線電語音">語音 關</button>
+      <button id="help" class="icon-button" title="操作與資料依據">?</button>
+    </nav>
+  </header>
+  <main class="dashboard">
+    <section class="radar-panel panel" aria-label="進離場雷達">
+      <div class="panel-heading dark"><div><span class="eyebrow">APPROACH CONTROL</span><h2>進離場雷達</h2></div><span class="live-badge"><i></i> 124.6</span></div>
+      <div class="radar-stage"><canvas id="radar" aria-label="金門空域雷達，點選標籤可選取航班"></canvas><div class="radar-note">N ↑ <span id="radar-range">50 NM</span></div></div>
+      <div class="radar-controls"><button data-range="wide" class="active">全域</button><button data-range="near">近場</button><button id="routes" class="active">航路</button><span>● 進場　<span class="dep-key">● 離場</span></span></div>
+    </section>
+    <section class="scene-panel panel" aria-label="機場場景">
+      <div class="scene-top"><div><span class="eyebrow">KINMEN / SHANGYI AIRPORT</span><h2>海岸邊的第一班</h2></div><div class="view-buttons"><button id="overview">全景</button><button id="apron" class="active">機坪</button><button id="follow-plane">航機</button></div></div>
+      <div id="stage"><div class="loading" id="loading">正在建立金門機場…</div></div>
+      <div class="scene-bottom"><span class="runway-status" id="runway-status"><i></i> 跑道可用</span><span>拖曳平移 · 滾輪縮放 · 點選航機</span><span class="scene-compass">↖ N</span></div>
+      <div id="render-error" hidden>3D 畫面無法啟動，請使用支援 WebGL 的 Chrome 或 Edge。雷達與管制操作仍可使用。</div>
+    </section>
+    <section class="comms-panel panel" aria-label="無線電通話">
+      <div class="panel-heading"><div><span class="eyebrow">RADIO COMMUNICATION</span><h2>無線電通話</h2></div><span class="tiny">指令 → 回讀 → 執行</span></div>
+      <div class="channels"><button data-channel="ALL" class="active">全部</button><button data-channel="GND">地面 <small>126.2</small><i></i></button><button data-channel="TWR">塔台 <small>118.0</small><i></i></button><button data-channel="APP">進近 <small>124.6</small><i></i></button></div>
+      <div class="radio-log" id="radio-log" role="log" aria-label="通話紀錄"></div>
+    </section>
+    <section class="operations" aria-label="航班管制管理">
+      <div class="selected-panel panel">
+        <div class="selected-info"><div class="aircraft-symbol" id="plane-symbol">✈</div><div><span class="eyebrow" id="selected-category">離場航班 / DEPARTURE</span><div class="selected-title"><strong id="selected-callsign">B78642</strong><span id="selected-route">ATR72 → 松山</span></div></div><span class="status-chip" id="selected-status">請求出發許可</span></div>
+        <div class="selected-details" id="selected-details"></div>
+        <div class="commands" id="commands"></div>
+        <div class="guidance"><span>↳</span><p id="guidance"></p></div>
+      </div>
+      <div class="strips-grid">
+        <section class="strips-panel panel"><div class="strip-heading"><h2><span class="flight-direction">↗</span> 離場航班</h2><span id="departure-count">0 / 2</span></div><div class="strip-columns"><span>呼號 / 機型</span><span>目的地 / 表定</span><span>狀態</span></div><div id="departures" class="strip-list"></div></section>
+        <section class="strips-panel panel"><div class="strip-heading"><h2><span class="flight-direction arr">↙</span> 進場航班</h2><span id="arrival-count">0 / 2</span></div><div class="strip-columns"><span>呼號 / 機型</span><span>來源 / 表定</span><span>狀態</span></div><div id="arrivals" class="strip-list"></div></section>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><span><i class="small-dot"></i> <span id="footer-message">等待開始管制</span></span><div><span id="progress">完成 0 / 4</span><span id="score">效率 0</span><button id="restart">更換班表</button><button id="sources-button">資料依據</button></div></footer>
+  <div id="toast" role="status"></div>
+  <dialog id="welcome" class="welcome-dialog"><form method="dialog"><div class="dialog-kicker">RCBS · KINMEN / SHANGYI</div><div class="welcome-mark">✳</div><h2>早安，金門塔台。</h2><p class="lead">一條跑道，幾架航班。<br>用每一次清楚的指令，安排安全的相遇。</p><div class="scenario-options"><button type="button" data-scenario="morning" class="scenario-card active"><span>01 / MORNING</span><strong>晨光・第一班</strong><small>跑道 06 · 4 架航班 · 入門</small></button><button type="button" data-scenario="west" class="scenario-card"><span>02 / SEA BREEZE</span><strong>海風・西向運作</strong><small>跑道 24 · 4 架航班 · 進階</small></button></div><div class="welcome-steps"><span><b>1</b> 點選航班</span><span><b>2</b> 發出指令</span><span><b>3</b> 等待回讀與移動</span></div><button id="start" class="primary start-button" value="start">開始這班管制 <span>→</span></button><p class="welcome-foot">建議桌機操作 · 內建簡短引導 · 空白鍵暫停</p></form></dialog>
+  <dialog id="help-dialog" class="help-dialog"><div class="dialog-header"><div><span class="eyebrow">CONTROLLER'S NOTEBOOK</span><h2>值班手冊</h2></div><button class="close-dialog" aria-label="關閉">×</button></div><div class="help-tabs"><button data-tab="operate" class="active">怎麼操作</button><button data-tab="sources">航圖與範圍</button></div><div id="help-body"></div></dialog>
+  <dialog id="finish-dialog" class="finish-dialog"><span class="dialog-kicker">SHIFT COMPLETE</span><div class="welcome-mark">✓</div><h2>本班管制完成。</h2><p>所有航班都已安全到位或移交高雄進近。</p><div id="finish-stats"></div><button id="next-shift" class="primary">選擇下一班 →</button><button class="close-dialog">回到機場</button></dialog>
+  <script type="module" src="app.mjs"></script>
+</body></html>

@@ -1,0 +1,10 @@
+from pathlib import Path
+r=Path.cwd()
+p=r/'remake/world-handdrawn.mjs';s=p.read_text(encoding='utf-8-sig').replace("let left=1050,right=3230;", "let left=1150,right=3210;if(width<700){left=2290;right=3160;}").replace("imageAt(images.terminal,2785,-329,490,178)","imageAt(images.terminal,2785,-340,620,225)").replace("Math.max(34,Math.min(82,(a.type==='JET'?105:82)*v.s))","Math.max(width<700?50:84,Math.min(145,(a.type==='JET'?170:135)*v.s))").replace("for(let i=0;i<39;i++){const x=500+i*73;imageAt(images.tree,x,-485-(i%4)*16,54,70)}","for(let i=0;i<54;i++){const x=460+i*53+Math.sin(i*3)*22;imageAt(images.tree,x,-485-(i%7)*24,46+(i%3)*8,62+(i%3)*8)}")
+p.write_text(s,encoding='utf-8')
+p=r/'remake/build-handdrawn.py';s=p.read_text(encoding='utf-8-sig');s=s.replace("parts.append(code)","""if filename=='app.mjs':
+        code=code.replace('const commands=sim.commands(),cs=', \"const availableCommands=sim.commands();const common=a.kind==='DEP'?[['taxi','滑行許可'],['hold','原地等待'],['lineup','進跑道等待'],['takeoff','起飛許可']]:[['ils','進場許可'],['land','降落許可'],['goaround','重飛']];const commands=[...availableCommands,...common.filter(([id])=>!availableCommands.some(c=>c.id===id)).map(([id,label])=>({id,label,disabled:true,reason:'目前航班階段尚不適用此指令。'}))],cs=\")
+        code=code.replace('飛機顯示放大 1.75 倍','飛機圖示為便於辨識而放大，非等比例')
+        code=code.replace('3D 畫面無法啟動','場景無法啟動')
+    parts.append(code)""");p.write_text(s,encoding='utf-8')
+p=r/'remake/prepare-handdrawn.py';s=p.read_text(encoding='utf-8-sig');s=s.replace("(r/'assets/css/game.css').write_text(css", "css+='\\n.radar-panel,.radar-panel .panel-heading,.radar-controls{background:#1e3933}.radar-panel .panel-heading h2{color:#e5eddc}.commands button:first-child{max-width:240px}.commands button{font-weight:600}.flight-strip.inactive{opacity:.82}@media(max-width:700px){.selected-panel{order:2}.strips-grid{order:1}.commands button:first-child{max-width:none}.flight-strip{grid-template-columns:1fr 1fr}.flight-strip .city{display:none}.strip-columns{display:none}}\\n'\n(r/'assets/css/game.css').write_text(css");p.write_text(s,encoding='utf-8')

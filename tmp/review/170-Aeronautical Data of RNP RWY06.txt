@@ -1,0 +1,53 @@
+WAYPOINT LIST (WGS84) 
+RCBS RNP RWY06 
+Waypoint Name Latitude Longitude Fix Waypoint Type 
+SANDY 241659.78N 1183425.31E IAF IAWP 
+SPICA 241543.82N 1182141.78E IAF IAWP 
+KNISH 241 626.43N 1181340.01E - WP
+KETCH 242055.27N 1181112.39E IF  IWP 
+KEBAB 242310.52N 1181605.91E FAF FAWP 
+RWY06 242525.60N 1182059.60E MAPt MAWP 
+SANDY 241659.78N 1183425.31E MAHF MAHWP 
+Seq 
+No 
+Path 
+Term- 
+inator 
+Fix 
+Identifier 
+(Waypoint 
+Name) 
+Fly 
+Over 
+Course 
+°M (°T) 
+Turn 
+Directi
+on 
+Altitude 
+(ft) 
+Speed 
+Limit 
+Vertical 
+Angle/ 
+THR 
+Crossing 
+Height 
+Navigation 
+Specification 
+01 IF SANDY - 268 
+(263.80) - +5000 - - RNP APCH 
+01 IF SPICA - 280 
+(275.47) - +4000 - - RNP APCH 
+02 TF KNISH - 337 
+(333.30) Right +4000 -210 - RNP APCH 
+03 TF KETCH - 067 
+(063.28) Right  +2900 -210 - RNP APCH 
+04 TF KEBAB - 067 
+(063.31) - 1700 - -3.0 RNP APCH 
+05 TF RWY06 Y - Right  OCA - -3.0/50 RNP APCH 
+06 VA RWY06 - 067 
+(63.34) - +800 - - RNP APCH 
+07 DF SANDY - - - +3000 - - RNP APCH 
+08 HM SANDY - 309 
+(304.83) Left +3000 - - RNP APCH 

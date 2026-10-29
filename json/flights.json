@@ -1,0 +1,144 @@
+{
+  "_comment": "班表資料 — 每個關卡（scenario）一份，程式讀取後取代 spawnInitial() 的硬編碼",
+  "_schema": {
+
+    "scenario": {
+      "id":          "關卡識別碼（字串）",
+      "title":       "關卡標題（顯示用）",
+      "schedStart":  "遊戲時間起點，格式 HH:MM（對應 SCHED_START）",
+      "wind":        "{ dir: 風向（FROM，度）, spd: 風速（節）}"
+    },
+
+    "airlines": {
+      "_comment":    "航空公司代碼對照表，供 acImgSrc() 查找 al_code",
+      "key":         "航空公司名稱（與 flights[].airline 對應）",
+      "code":        "圖檔前綴代碼（對應 acImgSrc() 中的 al_code）",
+      "callsignPfx": "無線電呼號前綴（選填，未來自動組呼號用）"
+    },
+
+    "flights": [
+      {
+        "callsign":     "無線電呼號（班號），字串",
+        "airline":      "航空公司名稱，需與 airlines[].key 對應",
+        "type":         "機型，需與 aircraft_types.json 的頂層 key 對應",
+        "cat":          "機場分類：COM（民用）| MIL（軍用）| MED（備用）",
+
+        "direction":    "DEP（離場）| ARR（進場）",
+
+        "dep": {
+          "_comment":   "僅 direction=DEP 時填寫，ARR 時省略此區塊",
+          "gate":       "機坪號碼，如 '2'、'M1'，需與 GATES_COM / GATES_MIL 的 id 對應",
+          "destination":"目的地機場名稱，如 '松山'、'屏東'",
+          "depTime":    "計畫離場時間，格式 HH:MM",
+          "fl":         "計畫巡航飛行高度層（百呎），如 180 = FL180",
+          "sid":        "指派 SID 名稱（選填），如 'CUBON 1A'；null 表示由管制員指定",
+          "waitTimer":  "生成後延遲幾秒才開始向管制員請求，單位：遊戲秒"
+        },
+
+        "arr": {
+          "_comment":      "僅 direction=ARR 時填寫，DEP 時省略此區塊",
+          "gate":          "預計停靠機坪（降落後引導用），如 '3'、'5'",
+          "origin":        "出發地機場名稱，如 '松山'、'臺中'",
+          "arrTime":       "計畫抵達時間，格式 HH:MM",
+          "initWpt":       "生成位置的基準航點名稱，如 'CUBON'（對應 WPT 物件的 key）",
+          "initOffsetNm":  "從 initWpt 沿 initBearing 方向偏移的距離（海浬）",
+          "initBearing":   "偏移方向（真方位，度），如 125 = 東南方",
+          "initHdg":       "生成時的初始航向（度），如 305",
+          "initSpd":       "生成時的初始空速（節），如 220",
+          "initAlt":       "生成時的初始高度（呎），如 9000",
+          "pendingRoute":  "預設進場程序名稱，對應 ARR_ROUTES 的 key，如 'CUBON-1C-06'",
+          "waitTimer":     "生成後延遲幾秒才開始移動（負值=提前倒數），單位：遊戲秒"
+        }
+      }
+    ]
+  },
+
+  "scenario": {
+    "id":         "RCBS-01",
+    "title":      "金門尚義 — 晨間班表",
+    "schedStart": "08:00",
+    "wind":       { "dir": 50, "spd": 12 }
+  },
+
+  "airlines": {
+    "立榮航空":     { "code": "B7",    "callsignPfx": "B7" },
+    "華信航空":     { "code": "AE",    "callsignPfx": "AE" },
+    "中華民國空軍": { "code": "ROCAF", "callsignPfx": "Air Force" }
+  },
+
+  "flights": [
+    {
+      "callsign":  "B78642",
+      "airline":   "立榮航空",
+      "type":      "ATR 72-600",
+      "cat":       "COM",
+      "direction": "DEP",
+      "dep": {
+        "gate":        "2",
+        "destination": "松山",
+        "depTime":     "08:10",
+        "fl":          180,
+        "sid":         null,
+        "waitTimer":   10
+      }
+    },
+
+    {
+      "callsign":  "Air Force 1352",
+      "airline":   "中華民國空軍",
+      "type":      "C-130H",
+      "cat":       "MIL",
+      "direction": "DEP",
+      "dep": {
+        "gate":        "M1",
+        "destination": "屏東",
+        "depTime":     "08:25",
+        "fl":          200,
+        "sid":         null,
+        "waitTimer":   4
+      }
+    },
+
+    {
+      "callsign":  "B71234",
+      "airline":   "立榮航空",
+      "type":      "ATR 72-600",
+      "cat":       "COM",
+      "direction": "ARR",
+      "arr": {
+        "gate":          "3",
+        "origin":        "松山",
+        "arrTime":       "08:20",
+        "initWpt":       "CUBON",
+        "initOffsetNm":  8,
+        "initBearing":   125,
+        "initHdg":       305,
+        "initSpd":       220,
+        "initAlt":       9000,
+        "pendingRoute":  "CUBON-1C-06",
+        "waitTimer":     0
+      }
+    },
+
+    {
+      "callsign":  "AE1024",
+      "airline":   "華信航空",
+      "type":      "ATR 72-600",
+      "cat":       "COM",
+      "direction": "ARR",
+      "arr": {
+        "gate":          "5",
+        "origin":        "臺中",
+        "arrTime":       "08:35",
+        "initWpt":       "CUBON",
+        "initOffsetNm":  12,
+        "initBearing":   125,
+        "initHdg":       305,
+        "initSpd":       220,
+        "initAlt":       10000,
+        "pendingRoute":  "CUBON-1C-06",
+        "waitTimer":     -60
+      }
+    }
+  ]
+}

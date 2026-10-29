@@ -1,0 +1,59 @@
+{
+  "_comment": "機型靜態資料表 — 每種機型定義一次，供 flights.json 引用",
+  "_schema": {
+    "key":         "機型名稱字串，與 flights.json 的 type 欄位對應（作為查找鍵）",
+    "label":       "顯示用中文／英文名稱",
+    "speedClass":  "遊戲速度分類：high（高速）| low（低速）",
+    "imgKey":      "圖檔組合用的機型代碼，對應 acImgSrc() 中的 ty 變數",
+    "notes":       "備註（選填）"
+  },
+
+  "ATR 72-600": {
+    "label":      "ATR 72-600",
+    "speedClass": "low",
+    "imgKey":     "ATR72-600",
+    "notes":      "窄體客機"
+  },
+
+  "B737-800": {
+    "label":      "B737-800",
+    "speedClass": "high",
+    "imgKey":     "B737-800",
+    "notes":      "窄體客機"
+  },
+
+  "A321-200": {
+    "label":      "A321-200",
+    "speedClass": "high",
+    "imgKey":     "A321-200",
+    "notes":      "窄體客機"
+  },
+
+  "Fokker 50": {
+    "label":      "Fokker 50",
+    "speedClass": "low",
+    "imgKey":     "F50",
+    "notes":      "空軍行政專機"
+  },
+
+  "Beech 1900C": {
+    "label":      "Beech 1900C",
+    "speedClass": "low",
+    "imgKey":     "B1900C",
+    "notes":      "空軍行政專機"
+  },
+
+  "C-130H": {
+    "label":      "C-130H 大力神",
+    "speedClass": "low",
+    "imgKey":     "C130H",
+    "notes":      "空軍運輸機"
+  },
+
+  "Phenom 300": {
+    "label":      "Embraer Phenom 300",
+    "speedClass": "high",
+    "imgKey":     "Phenom300",
+    "notes":      "醫療專機"
+  }
+}

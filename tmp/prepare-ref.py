@@ -1,0 +1,2 @@
+from pathlib import Path
+r=Path.cwd();s=(r/'remake/prepare-handdrawn.py').read_text(encoding='utf-8');s=s.replace('return (x*.97+z*.18+500,x*.11+z*.72+660)','return (x+500,z+1000)').replace('width="4100" height="1600" viewBox="0 0 4100 1600"','width="4000" height="1850" viewBox="0 0 4000 1850"').replace('width="4100" height="1600" fill=','width="4000" height="1850" fill=').replace("r/'assets/images/airport-ground.svg'","r/'tmp/ground-plan-reference.svg'");s=s[:s.index('css=(r/')];(r/'tmp/make-ground-ref.py').write_text(s,encoding='utf-8')

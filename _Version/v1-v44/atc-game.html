@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATC Simulator v8 — RCBS 終極完整版</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;800&family=Inter:wght@400;600;700&display=swap');
+
+:root {
+  --bg: #050e14; --panel: rgba(6,18,28,0.95); --border: #0e2a3a;
+  --borderL: rgba(80,180,255,0.25);
+  --green: #00e87a; --gdim: #008a48; --teal: #00c8be; --blue: #44bbff;
+  --amber: #ffc046; --red: #ff5555; --purple: #c084ff;
+  --t1: #d4eef8; --t2: #6aabcc; --t3: #1e3d52;
+  --mono: 'Share Tech Mono', monospace; --disp: 'Orbitron', monospace; --ui: 'Inter', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--t1); font-family: var(--ui); height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+
+/* 復古掃描線效果 */
+body::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1) 1px, transparent 1px, transparent 2px); pointer-events: none; z-index: 999; opacity: 0.4; }
+
+/* ── TOP BAR (右上角中文資訊欄) ── */
+#topbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px; border-bottom: 1px solid var(--borderL); background: linear-gradient(90deg, rgba(0,20,40,0.98), rgba(5,15,30,0.98)); flex-shrink: 0; z-index: 10; height: 50px; }
+.title { font-family: var(--disp); font-weight: 800; font-size: 16px; letter-spacing: 3px; color: var(--teal); text-shadow: 0 0 12px rgba(34,221,208,0.4); }
+#clock { font-size: 22px; font-family: var(--disp); font-weight: 600; color: var(--green); letter-spacing: 2px; }
+#wx { display: flex; gap: 20px; font-size: 12px; font-weight: 600; color: var(--t2); align-items: center; }
+.wx-item { display: flex; align-items: center; gap: 6px; }
+.wx-item .val { font-family: var(--mono); font-size: 14px; font-weight: bold; color: var(--t1); }
+.wx-item .val.green { color: var(--green); text-shadow: 0 0 5px rgba(0,232,122,0.4); }
+
+/* ── MAIN LAYOUT ── */
+#wrap { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+/* 左側：雷達與通訊 */
+#left-col { display: flex; flex-direction: column; flex: 1; min-width: 0; border-right: 1px solid var(--borderL); position: relative; }
+#radar-wrap { flex: 1; position: relative; overflow: hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.8); }
+canvas { display: block; width: 100%; height: 100%; }
+
+/* 視角切換 */
+#vtog { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; background: rgba(5,15,28,0.9); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; z-index: 10; backdrop-filter: blur(4px); }
+#vtog button { background: none; border: none; color: var(--t3); font-family: var(--disp); font-weight: 600; font-size: 11px; padding: 6px 20px; cursor: pointer; letter-spacing: 1px; transition: all .2s; }
+#vtog button.on { background: rgba(68,187,255,0.15); color: var(--blue); border-bottom: 2px solid var(--blue); }
+
+/* 彈出指令選單 (只在雷達上出現) */
+#pop { position: absolute; background: rgba(5,14,26,0.97); border: 1px solid var(--teal); border-radius: 5px; padding: 12px; z-index: 20; min-width: 200px; display: none; box-shadow: 0 0 25px rgba(34,221,208,0.25); }
+#pop.on { display: block; }
+#pop .pt { color: var(--teal); font-size: 14px; margin-bottom: 6px; letter-spacing: 1px; border-bottom: 1px solid var(--border); padding-bottom: 5px; font-weight: bold; }
+#pop .psub { color: var(--t2); font-size: 11px; margin-bottom: 10px; font-family: var(--mono); }
+#pop button { display: block; width: 100%; background: rgba(10,30,40,0.5); border: 1px solid var(--border); color: var(--t1); font-family: var(--ui); font-size: 12px; font-weight: 600; padding: 8px; margin-bottom: 4px; text-align: center; cursor: pointer; transition: all .15s; border-radius: 3px; }
+#pop button:hover:not(:disabled) { background: var(--teal); color: #000; font-weight: bold; }
+#pop button:disabled { opacity: 0.4; cursor: default; }
+
+/* ── 通訊對話欄 (Comms Bar) ── */
+#comms-bar { height: 180px; flex-shrink: 0; border-top: 1px solid var(--borderL); background: linear-gradient(180deg, rgba(5,14,26,0.98), rgba(2,8,15,0.98)); display: flex; flex-direction: column; }
+#ch { display: flex; align-items: center; border-bottom: 1px solid var(--border); background: rgba(0,0,0,.3); flex-shrink: 0; }
+.stab { font-family: var(--disp); font-size: 11px; font-weight: 700; padding: 8px 18px; border-right: 1px solid var(--border); cursor: pointer; letter-spacing: 1.5px; color: var(--t3); transition: all .2s; border-bottom: 3px solid transparent; }
+.stab.on { color: var(--teal); background: rgba(34,221,208,.08); border-bottom-color: var(--teal); }
+.stab:hover:not(.on) { color: var(--t2); }
+#clabel { margin-left: auto; padding: 0 16px; font-size: 11px; font-family: var(--disp); color: var(--t3); letter-spacing: 3px; }
+#clog { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; }
+.cm { display: flex; align-items: flex-start; gap: 10px; padding: 4px 18px; font-size: 13px; line-height: 1.6; }
+.cm-t { color: var(--t3); font-size: 11px; flex-shrink: 0; width: 65px; font-family: var(--disp); }
+.cm-s { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; flex-shrink: 0; letter-spacing: .5px; width: 48px; text-align: center; }
+.s-DEL { background: rgba(100,220,100,.15); color: #60dd60; border: 1px solid rgba(100,220,100,.3); }
+.s-GND { background: rgba(255,192,70,.15); color: var(--amber); border: 1px solid rgba(255,192,70,.3); }
+.s-TWR { background: rgba(68,187,255,.15); color: var(--blue); border: 1px solid rgba(68,187,255,.3); }
+.s-APP { background: rgba(192,132,255,.15); color: var(--purple); border: 1px solid rgba(192,132,255,.3); }
+.s-AC { background: rgba(255,255,255,.08); color: var(--t1); border: 1px solid rgba(255,255,255,.2); }
+.cm-x { color: var(--t1); }
+.cm-x.atc { color: rgba(160,240,200,.95); }
+.cursor { display: inline-block; width: 8px; height: 14px; background: var(--green); margin-left: 4px; animation: blink .8s step-end infinite; vertical-align: middle; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ── 右側：航班清單卡片 ── */
+#right { width: 340px; background: var(--panel); display: flex; flex-direction: column; flex-shrink: 0; }
+#sec-dep, #sec-arr { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+#sec-dep { border-bottom: 2px solid var(--border); }
+.fl-hdr { font-size: 12px; font-family: var(--disp); letter-spacing: 1.5px; padding: 10px 14px; font-weight: 700; flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.fh-dep { color: var(--amber); background: rgba(255,192,70,0.08); border-bottom: 1px solid rgba(255,192,70,0.3); }
+.fh-arr { color: var(--blue); background: rgba(68,187,255,0.08); border-bottom: 1px solid rgba(68,187,255,0.3); }
+.fl-list { overflow-y: auto; flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+/* 航班卡片 */
+.fi { padding: 12px 14px; cursor: pointer; background: rgba(0,0,0,0.3); border: 1px solid rgba(14,42,58,.5); font-size: 14px; line-height: 1.6; transition: all .15s; border-radius: 4px; }
+.fi:hover { background: rgba(68,187,255,.08); border-color: rgba(68,187,255,.4); }
+.fi.sel { background: rgba(34,221,208,.1); border-color: var(--teal); box-shadow: 0 0 10px rgba(34,221,208,0.2); }
+.fi .cs { font-size: 16px; font-weight: bold; letter-spacing: 1px; color: var(--t1); display: flex; align-items: center; justify-content: space-between; }
+.fi.sel .cs { color: var(--teal); }
+.fi .dt { color: var(--t2); font-size: 12px; margin-top: 4px; font-family: var(--mono); }
+.fi .rte { font-size: 13px; font-weight: bold; margin-top: 4px; }
+.rte-dep { color: var(--amber); } .rte-arr { color: var(--blue); }
+
+.badge { font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 700; }
+.bg { background: rgba(255,192,70,.2); color: var(--amber); }
+.ba { background: rgba(68,187,255,.2); color: var(--blue); }
+.bp { background: rgba(0,232,122,.2); color: var(--green); }
+.br { background: rgba(255,85,85,.2); color: var(--red); }
+
+/* STATUS BAR */
+#sb { padding: 5px 18px; border-top: 1px solid var(--border); background: #020810; font-size: 10px; color: var(--t3); display: flex; justify-content: space-between; flex-shrink: 0; font-family: var(--disp); }
+#msg { color: var(--amber); }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--teal); }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="title">RCBS · 金門尚義管制中心</div>
+  <div id="clock">00:00:00</div>
+  <div id="wx">
+    <span class="wx-item">風向/風速: <span class="val green">050°/12KT</span></span>
+    <span class="wx-item">能見度: <span class="val">10KM</span></span>
+    <span class="wx-item">天氣: <span class="val">CAVOK</span></span>
+    <span class="wx-item">氣壓(QNH): <span class="val">1013</span></span>
+    <span class="wx-item">使用跑道: <span class="val green">06 (開放)</span></span>
+  </div>
+</div>
+
+<div id="wrap">
+  <div id="left-col">
+    <div id="radar-wrap">
+      <canvas id="radar"></canvas>
+      <div id="vtog">
+        <button id="btn-g" class="on" onclick="setView('ground')">SMR 地面</button>
+        <button id="btn-a" onclick="setView('air')">ASR 空中</button>
+      </div>
+      <div id="pop">
+        <div class="pt" id="pt"></div>
+        <div class="psub" id="psub"></div>
+        <div id="pb"></div>
+      </div>
+    </div>
+    <div id="comms-bar">
+      <div id="ch">
+        <div class="stab on" onclick="fSeat('ALL')">ALL</div>
+        <div class="stab" onclick="fSeat('DEL')">DEL</div>
+        <div class="stab" onclick="fSeat('GND')">GND</div>
+        <div class="stab" onclick="fSeat('TWR')">TWR</div>
+        <div class="stab" onclick="fSeat('APP')">APP</div>
+        <div id="clabel">RADIO COMMS LOG</div>
+      </div>
+      <div id="clog"></div>
+    </div>
+  </div>
+
+  <div id="right">
+    <div id="sec-dep">
+      <div class="fl-hdr fh-dep">↑ 離場 DEPARTURES</div>
+      <div class="fl-list" id="list-dep"></div>
+    </div>
+    <div id="sec-arr">
+      <div class="fl-hdr fh-arr">↓ 進場 ARRIVALS</div>
+      <div class="fl-list" id="list-arr"></div>
+    </div>
+  </div>
+</div>
+
+<div id="sb">
+  <span id="msg">SYSTEM ONLINE · TWR 118.1</span>
+  <span id="acc">TRAFFIC: 0</span>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════
+const GAME_SPEED = 1;
+const NM_PX = 16;
+let GS = 0.25; 
+let cW = 800, cH = 600; // 預設值防呆
+
+const RWY_LEN = 3000, RWY_W = 60;
+const TWY_Y = -150; 
+const CX = {W1:200, W2:600, C1:1200, E1:2100, E2:2800};
+
+// 機坪視覺化區域
+const APR_MIL = {x:340, y:-350, w:450, h:170};
+const APR_MED = {x:880, y:-320, w:270, h:145};
+const APR_COM = {x:1250, y:-350, w:1260, h:170};
+const TERM    = {x:1290, y:-540, w:1180, h:155};
+
+const GATES_MIL=[{id:'M1',x:440,y:-265,cat:'MIL'},{id:'M2',x:590,y:-265,cat:'MIL'},{id:'M3',x:730,y:-265,cat:'MIL'}];
+const GATES_MED=[{id:'X1',x:980,y:-250,cat:'MED'}];
+const GATES_COM=[
+  {id:'N1',x:1340,y:-265,cat:'COM'},{id:'N2',x:1510,y:-265,cat:'COM'},
+  {id:'N3',x:1680,y:-265,cat:'COM'},{id:'N4',x:1850,y:-265,cat:'COM'},
+  {id:'N5',x:2020,y:-265,cat:'COM'},{id:'N6',x:2200,y:-265,cat:'COM'}
+];
+const ALL_GATES=[...GATES_COM,...GATES_MIL,...GATES_MED];
+const HOLD_06={x:CX.W1, y:-90};
+const HOLD_24={x:CX.E2, y:-90};
+
+const WPT={ ALPHA:{x:-5,y:-20}, BRAVO:{x:6,y:18}, FF06:{x:-8,y:-6}, FF24:{x:8,y:6}, D060:{x:12,y:-14}, D240:{x:-12,y:14} };
+
+// ════════════════════════════════════════════
+// AIRLINES
+// ════════════════════════════════════════════
+function rI(a,b){return a+Math.floor(Math.random()*(b-a));}
+const AL_COM=[
+  {name:'立榮航空',cs:()=>'B7'+rI(8000,9999),types:['ATR 72-600','A321-200']},
+  {name:'華信航空',cs:()=>'AE'+rI(1200,1299),types:['ATR 72-600','B737-800']},
+];
+const AL_MIL=[{name:'中華民國空軍',cs:()=>'ROCAF'+rI(1300,1399),types:['C-130H','Fokker 50']}];
+const AL_MED=[{name:'飛特立航空',cs:()=>'FNE'+rI(10,99),types:['Phenom 300']}];
+
+const D_COM=['松山','松山','高雄','臺中','臺南','嘉義','澎湖'];
+const D_MIL=['松山','屏東','嘉義','清泉崗'];
+
+// ════════════════════════════════════════════
+// GAME STATE
+// ════════════════════════════════════════════
+let view='ground', gTime=0, sel=null;
+let cLog=[], cFilt='ALL';
+const ACs={};
+let nId=1, lastSpawn=0;
+
+function makeAC(o={}){
+  const r = Math.random();
+  const cat = o.cat || (r<0.75?'COM':'MIL');
+  let al;
+  if(cat==='MIL') al = AL_MIL[0];
+  else if(cat==='MED') al = AL_MED[0];
+  else al = AL_COM[rI(0,AL_COM.length)];
+
+  const type=o.type||al.types[rI(0,al.types.length)];
+  const cs=o.callsign||al.cs();
+  const dests=cat==='MIL'?D_MIL:(cat==='MED'?['松山']:D_COM);
+  const dest=o.destination||dests[rI(0,dests.length)];
+  const isArr=o.origin && o.origin !== 'RCBS';
+  
+  let gp=cat==='COM'?GATES_COM:(cat==='MIL'?GATES_MIL:GATES_MED);
+  let gObj=o.gate?ALL_GATES.find(g=>g.id===o.gate):gp[rI(0,gp.length)];
+  
+  return {
+    id:'AC'+(nId++), callsign:cs, airline:al.name, type, cat, isArrival: isArr,
+    state:o.state||'PARKED', isTalking:false,
+    gx:o.gx??gObj.x, gy:o.gy??gObj.y, gHdg:o.gHdg??90, gSpd:0,
+    taxiRoute:o.taxiRoute||[], taxiIdx:0, holdShort:false, gate:gObj.id, assignedRwy:o.assignedRwy||'06',
+    ax:o.ax??0, ay:o.ay??0, aHdg:o.aHdg??90, aSpd:o.aSpd??250, altitude:o.altitude??0, targetAlt:o.targetAlt??0, targetHdg:null, clearedILS:false,
+    destination:isArr ? 'RCBS' : dest, origin: isArr ? dest : 'RCBS', fl:o.fl||rI(14,26)*10, ...o,
+  };
+}
+
+// ════════════════════════════════════════════
+// CANVAS & GEOMETRY (防呆處理，確保必定有畫面)
+// ════════════════════════════════════════════
+const cv=document.getElementById('radar');
+const cx=cv.getContext('2d');
+
+function resize(){
+  const wrap = document.getElementById('radar-wrap');
+  if(!wrap) return;
+  cW = wrap.clientWidth; 
+  cH = wrap.clientHeight;
+  if(cW === 0 || cH === 0) { cW = 800; cH = 600; } // 極端情況防呆
+  
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(cW * dpr); 
+  cv.height = Math.round(cH * dpr);
+  cv.style.width = cW + 'px'; 
+  cv.style.height = cH + 'px';
+  cx.setTransform(1,0,0,1,0,0);
+  cx.scale(dpr,dpr);
+  GS = (cW * 0.85) / (RWY_LEN + 400); 
+}
+window.addEventListener('resize', resize);
+
+function gOrig(){
+  // 垂直置中：機場 Y 軸範圍大約是 +200 到 -540，讓 -150(滑行道) 處於畫面中央
+  return { ox: cW * 0.05, oy: cH / 2 + 150 * GS };
+}
+function m2c(mx,my){ const {ox,oy}=gOrig(); return {x:ox+mx*GS, y:oy+my*GS}; }
+function aOrig(){ return {ox:cW/2, oy:cH/2}; }
+function nm2c(nx,ny){ const {ox,oy}=aOrig(); return {x:ox+nx*NM_PX, y:oy-ny*NM_PX}; }
+
+// ════════════════════════════════════════════
+// DRAW GROUND (海洋與沙灘實裝)
+// ════════════════════════════════════════════
+function drawGround(){
+  cx.clearRect(0,0,cW,cH);
+  cx.fillStyle='#0f1c13'; cx.fillRect(0,0,cW,cH); // 草地
+
+  // 繪製海洋
+  cx.fillStyle = '#0a2235'; 
+  cx.beginPath();
+  const c1 = m2c(-1500, 250);
+  const c2 = m2c(RWY_LEN/2, 400);
+  const c3 = m2c(RWY_LEN+1500, 250);
+  cx.moveTo(c1.x, c1.y);
+  cx.quadraticCurveTo(c2.x, c2.y, c3.x, c3.y);
+  cx.lineTo(c3.x, cH + 500);
+  cx.lineTo(c1.x, cH + 500);
+  cx.fill();
+
+  // 繪製沙灘海岸線
+  cx.strokeStyle = 'rgba(190, 160, 90, 0.4)';
+  cx.lineWidth = 30 * GS; 
+  cx.beginPath();
+  cx.moveTo(c1.x, c1.y);
+  cx.quadraticCurveTo(c2.x, c2.y, c3.x, c3.y);
+  cx.stroke();
+
+  // 網格
+  cx.strokeStyle='rgba(0,255,136,0.03)'; cx.lineWidth=0.5;
+  for(let x=0;x<cW;x+=50){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,cH);cx.stroke();}
+  for(let y=0;y<cH;y+=50){cx.beginPath();cx.moveTo(0,y);cx.lineTo(cW,y);cx.stroke();}
+
+  // 建築物 (無文字，視覺色塊)
+  drawPoly(rP(TERM.x,TERM.y,TERM.w,TERM.h),'rgba(20,40,25,0.8)','rgba(40,120,60,0.5)',1);
+  drawPoly(rP(APR_COM.x,APR_COM.y,APR_COM.w,APR_COM.h),'rgba(10,25,15,0.7)','rgba(20,60,30,0.5)',0.8);
+  drawPoly(rP(APR_MED.x,APR_MED.y,APR_MED.w,APR_MED.h),'rgba(25,20,10,0.7)','rgba(60,50,20,0.5)',0.8);
+  drawPoly(rP(APR_MIL.x,APR_MIL.y,APR_MIL.w,APR_MIL.h),'rgba(35,15,15,0.7)','rgba(80,30,30,0.5)',0.8);
+
+  // 機坪引導線
+  ALL_GATES.forEach(g=>{
+    const pa=m2c(g.x,g.y+8), pb=m2c(g.x,TWY_Y);
+    cx.strokeStyle='rgba(0,120,60,0.3)'; cx.lineWidth=2*GS; cx.setLineDash([5,5]);
+    cx.beginPath(); cx.moveTo(pa.x,pa.y); cx.lineTo(pb.x,pb.y); cx.stroke(); cx.setLineDash([]);
+    drawGate(g);
+  });
+
+  drawTwy(-100,TWY_Y, RWY_LEN+300,TWY_Y, 22);
+  Object.entries(CX).forEach(([nm,x])=>drawConnector(x));
+
+  drawRunway();
+  drawHold(HOLD_06); drawHold(HOLD_24);
+
+  Object.values(ACs).forEach(ac=>{if(isGnd(ac.state))drawACGnd(ac);});
+}
+
+function rP(x,y,w,h){return[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];}
+function drawPoly(pts,fill,stroke,sw){
+  const cp=pts.map(p=>m2c(p[0],p[1])); cx.beginPath(); cp.forEach((p,i)=>i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y)); cx.closePath();
+  if(fill!=='none'){cx.fillStyle=fill;cx.fill();}
+  if(stroke!=='none'&&sw>0){cx.strokeStyle=stroke;cx.lineWidth=sw;cx.stroke();}
+}
+function drawTwy(x1,y1,x2,y2,wm){
+  const a=m2c(x1,y1),b=m2c(x2,y2);
+  cx.strokeStyle='rgba(0,90,45,0.6)'; cx.lineWidth=wm*GS; cx.lineCap='butt';
+  cx.beginPath(); cx.moveTo(a.x,a.y); cx.lineTo(b.x,b.y); cx.stroke();
+  cx.strokeStyle='rgba(200,160,0,0.3)'; cx.lineWidth=1; cx.setLineDash([8,6]);
+  cx.beginPath(); cx.moveTo(a.x,a.y); cx.lineTo(b.x,b.y); cx.stroke(); cx.setLineDash([]);
+}
+function drawConnector(x){
+  const a=m2c(x,0),b=m2c(x,TWY_Y);
+  cx.strokeStyle='rgba(0,90,45,0.6)'; cx.lineWidth=15*GS; cx.lineCap='butt';
+  cx.beginPath(); cx.moveTo(a.x,a.y); cx.lineTo(b.x,b.y); cx.stroke();
+  cx.strokeStyle='rgba(200,160,0,0.2)'; cx.lineWidth=1; cx.setLineDash([6,5]);
+  cx.beginPath(); cx.moveTo(a.x,a.y); cx.lineTo(b.x,b.y); cx.stroke(); cx.setLineDash([]);
+}
+
+// 跑道 06/24 數字轉向 90度
+function drawRunway(){
+  const a=m2c(0,0),b=m2c(RWY_LEN,0); const dx=b.x-a.x, dy=b.y-a.y, len=Math.sqrt(dx*dx+dy*dy);
+  cx.save(); cx.translate(a.x,a.y); cx.rotate(Math.atan2(dy,dx));
+  const rh=RWY_W*GS;
+  cx.fillStyle='#1a1f1a'; cx.fillRect(0, -rh, len, rh*2);
+  cx.strokeStyle='rgba(0,255,136,0.3)'; cx.lineWidth=1.5; cx.strokeRect(0, -rh, len, rh*2);
+  cx.strokeStyle='rgba(0,255,136,0.3)'; cx.lineWidth=1.5; cx.setLineDash([16,12]);
+  cx.beginPath(); cx.moveTo(0,0); cx.lineTo(len,0); cx.stroke(); cx.setLineDash([]);
+  cx.restore();
+  
+  // 06 旋轉
+  const p06 = m2c(-60, 0);
+  cx.save(); cx.translate(p06.x, p06.y); cx.rotate(Math.PI/2);
+  lbl(0,0,'06','rgba(255,255,255,0.85)',16,true);
+  cx.restore();
+
+  // 24 旋轉
+  const p24 = m2c(RWY_LEN+60, 0);
+  cx.save(); cx.translate(p24.x, p24.y); cx.rotate(-Math.PI/2);
+  lbl(0,0,'24','rgba(255,255,255,0.85)',16,true);
+  cx.restore();
+}
+function drawHold(hp){
+  const p=m2c(hp.x,hp.y); cx.strokeStyle='rgba(255,80,80,0.8)'; cx.lineWidth=2;
+  cx.beginPath(); cx.moveTo(p.x-10,p.y-16); cx.lineTo(p.x-10,p.y+16); cx.stroke();
+  cx.setLineDash([5,5]); cx.beginPath(); cx.moveTo(p.x+5,p.y-16); cx.lineTo(p.x+5,p.y+16); cx.stroke(); cx.setLineDash([]);
+}
+function drawGate(g){
+  const p=m2c(g.x,g.y);
+  let fill,stroke;
+  if(g.cat==='MIL'){fill='rgba(80,20,20,0.85)';stroke='rgba(200,60,60,0.6)';}
+  else if(g.cat==='MED'){fill='rgba(70,60,10,0.85)';stroke='rgba(200,170,40,0.6)';}
+  else{fill='rgba(0,70,35,0.85)';stroke='rgba(0,190,90,0.6)';}
+  cx.fillStyle=fill; cx.strokeStyle=stroke; cx.lineWidth=0.8;
+  cx.beginPath(); cx.rect(p.x-8*GS,p.y-4*GS,16*GS,8*GS); cx.fill(); cx.stroke();
+}
+function lbl(x,y,t,col,sz,bold){
+  cx.fillStyle=col; cx.font=(bold?'bold ':'')+sz+'px Orbitron'; 
+  cx.textAlign='center'; cx.textBaseline='middle'; cx.fillText(t,x,y);
+}
+
+// ════════════════════════════════════════════
+// DRAW AIR 
+// ════════════════════════════════════════════
+function drawAir(){
+  cx.fillStyle='#010810'; cx.fillRect(0,0,cW,cH);
+  cx.fillStyle='rgba(0,8,22,0.55)'; cx.fillRect(0,0,cW,cH);
+  const {ox,oy}=aOrig();
+
+  const lands=[ [[-18,8],[-10,12],[0,14],[10,12],[18,6],[22,-2],[20,-8],[12,-12],[4,-13],[-6,-10],[-14,-8],[-20,-2],[-18,8]], [[14,18],[20,22],[24,20],[22,16],[16,16],[14,18]], ];
+  lands.forEach(pts=>{
+    const cp=pts.map(p=>nm2c(p[0],p[1])); cx.beginPath(); cp.forEach((p,i)=>i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y)); cx.closePath();
+    cx.fillStyle='rgba(0,25,12,0.75)'; cx.fill(); cx.strokeStyle='rgba(0,90,45,0.4)'; cx.lineWidth=1; cx.stroke();
+  });
+
+  [5,10,15,20,25].forEach(r=>{
+    cx.strokeStyle=r%10===0?'rgba(0,200,100,0.15)':'rgba(0,100,50,0.08)'; cx.lineWidth=0.5;
+    cx.beginPath(); cx.arc(ox,oy,r*NM_PX,0,Math.PI*2); cx.stroke();
+    cx.fillStyle='rgba(0,160,80,0.4)'; cx.font='9px Share Tech Mono'; cx.textAlign='left'; cx.fillText(r+'NM',ox+r*NM_PX+3,oy-3);
+  });
+
+  drawILS('06',90); drawILS('24',270);
+  Object.entries(WPT).forEach(([nm,wp])=>{
+    const p=nm2c(wp.x,wp.y); cx.strokeStyle='rgba(0,200,100,0.45)'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(p.x,p.y-5); cx.lineTo(p.x+5,p.y+5); cx.lineTo(p.x-5,p.y+5); cx.closePath(); cx.stroke();
+    cx.fillStyle='rgba(0,180,90,0.55)'; cx.font='9px Share Tech Mono'; cx.textAlign='left'; cx.fillText(nm,p.x+7,p.y+3);
+  });
+
+  cx.strokeStyle='rgba(0,255,136,0.55)'; cx.lineWidth=1;
+  cx.beginPath(); cx.arc(ox,oy,5,0,Math.PI*2); cx.stroke();
+  cx.beginPath(); cx.moveTo(ox-10,oy); cx.lineTo(ox+10,oy); cx.moveTo(ox,oy-10); cx.lineTo(ox,oy+10); cx.stroke();
+  cx.fillStyle='rgba(0,200,100,0.5)'; cx.fillText('RCBS',ox+9,oy+14);
+
+  Object.values(ACs).forEach(ac=>{if(!isGnd(ac.state)&&ac.state!=='DEPARTED')drawACAir(ac);});
+}
+
+function drawILS(rwy,hdg){
+  const rad=(hdg-90)*Math.PI/180;
+  const{ox,oy}=aOrig(); const len=10*NM_PX;
+  const ex=ox+Math.cos(rad)*len, ey=oy+Math.sin(rad)*len;
+  cx.strokeStyle='rgba(0,160,80,0.2)'; cx.lineWidth=1; cx.setLineDash([8,6]);
+  cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ex,ey); cx.stroke(); cx.setLineDash([]);
+}
+
+// ════════════════════════════════════════════
+// ARROW ICONS (高對比箭頭設計)
+// ════════════════════════════════════════════
+function drawArrow(ctx, size, color, isSel) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  // 尖端朝 -Y，透過 ctx.rotate 來控制真實方向
+  ctx.moveTo(0, -size * 1.5);
+  ctx.lineTo(size * 0.8, size);
+  ctx.lineTo(0, size * 0.3);
+  ctx.lineTo(-size * 0.8, size);
+  ctx.closePath();
+  ctx.fill();
+  if (isSel) {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+function drawACGnd(ac){
+  const p=m2c(ac.gx,ac.gy); const isSel=ac.id===sel;
+  const col=isSel?'#22ddd0':ac.cat==='MIL'?'#ff8855':'#44ff99';
+  const sz=Math.max(GS*14, 7);
+  
+  cx.save(); cx.translate(p.x,p.y); 
+  if(isSel){ cx.strokeStyle='rgba(34,221,208,0.4)'; cx.lineWidth=1; cx.setLineDash([3,3]); cx.beginPath(); cx.arc(0,0,sz*2.2,0,Math.PI*2); cx.stroke(); cx.setLineDash([]); }
+  
+  cx.rotate(ac.gHdg * Math.PI/180);
+  drawArrow(cx, sz, col, isSel);
+  
+  if (ac.state === 'TAKEOFF_ROLL') {
+    cx.beginPath(); cx.moveTo(0, sz*1.2); cx.lineTo(0, sz*1.2 + 8 + (ac.gSpd/5));
+    cx.strokeStyle = 'rgba(255,100,50,0.9)'; cx.lineWidth = 2.5; cx.stroke();
+  }
+  cx.restore();
+
+  cx.fillStyle=isSel?'#22ddd0':col; cx.font='bold 13px Share Tech Mono'; cx.textAlign='left'; cx.textBaseline='alphabetic'; cx.fillText(ac.callsign,p.x+sz+8,p.y-2);
+  cx.fillStyle='rgba(150,220,180,0.8)'; cx.font='11px Share Tech Mono'; cx.fillText(ac.type,p.x+sz+8,p.y+11);
+}
+
+function drawACAir(ac){
+  const p=nm2c(ac.ax,ac.ay); const isSel=ac.id===sel;
+  const col=isSel?'#22ddd0':ac.state==='FINAL_APPROACH'?'#ffc046':ac.cat==='MIL'?'#ff8855':'#44aaff';
+  const sz=8;
+
+  const rad=(ac.aHdg-90)*Math.PI/180;
+  for(let i=1;i<=4;i++){ 
+    const tx=p.x-Math.cos(rad)*i*8, ty=p.y-Math.sin(rad)*i*8; 
+    cx.fillStyle=`rgba(68,187,255,${0.2-i*0.04})`; cx.beginPath(); cx.arc(tx,ty,3-i*0.5,0,Math.PI*2); cx.fill(); 
+  }
+
+  cx.save(); cx.translate(p.x,p.y);
+  if(isSel){ cx.strokeStyle='rgba(34,221,208,0.4)'; cx.lineWidth=1; cx.setLineDash([3,3]); cx.beginPath(); cx.arc(0,0,20,0,Math.PI*2); cx.stroke(); cx.setLineDash([]); }
+  
+  cx.rotate(ac.aHdg * Math.PI/180);
+  drawArrow(cx, sz, col, isSel);
+  
+  const vl=ac.aSpd/60; cx.strokeStyle='rgba(0,200,100,0.4)'; cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(0, -sz*1.5); cx.lineTo(0, -sz*1.5 - vl*NM_PX*0.5); cx.stroke();
+  cx.restore();
+
+  cx.fillStyle=col; cx.font='bold 13px Share Tech Mono'; cx.textAlign='left'; cx.textBaseline='alphabetic'; cx.fillText(ac.callsign,p.x+15,p.y-4);
+  cx.fillStyle='rgba(200,240,220,0.8)'; cx.font='10px Share Tech Mono'; cx.fillText(`${Math.round(ac.altitude/100)*100}ft ${Math.round(ac.aSpd)}kt`,p.x+15,p.y+10);
+}
+
+function render(){view==='ground'?drawGround():drawAir();}
+
+// ════════════════════════════════════════════
+// TYPEWRITER COMMS SYSTEM (分離 UI)
+// ════════════════════════════════════════════
+let twQueue = [];
+let isTyping = false;
+
+function queueComms(lines, onComplete) {
+  twQueue.push({ lines, onComplete });
+  if (!isTyping) processTwQueue();
+}
+
+function processTwQueue() {
+  if (twQueue.length === 0) { isTyping = false; return; }
+  isTyping = true;
+  const task = twQueue.shift();
+  playLines(task.lines, 0, () => {
+    if (task.onComplete) task.onComplete(); // 對話結束後才執行動作
+    setTimeout(processTwQueue, 400); 
+  });
+}
+
+function playLines(lines, idx, onComplete) {
+  if (idx >= lines.length) {
+    if (onComplete) onComplete();
+    return;
+  }
+  const line = lines[idx];
+  const t = gTime;
+  const h=Math.floor(t/3600), m=Math.floor((t%3600)/60), s=Math.floor(t%60);
+  const ts=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  
+  const div = document.createElement('div');
+  div.className = 'cm';
+  div.dataset.seat = line.seat; 
+  div.style.display = (cFilt === 'ALL' || cFilt === line.seat) ? 'flex' : 'none';
+  
+  div.innerHTML = `<span class="cm-t">${ts}</span><span class="cm-s s-${line.seat}">${line.seat}</span><span class="cm-x ${line.type==='atc'?'atc':''}"></span><span class="cursor"></span>`;
+  document.getElementById('clog').prepend(div);
+  
+  const txtSpan = div.querySelector('.cm-x');
+  const cursor = div.querySelector('.cursor');
+  let cIdx = 0;
+  
+  function typeChar() {
+    if (cIdx < line.msg.length) {
+      txtSpan.textContent += line.msg.charAt(cIdx);
+      cIdx++;
+      setTimeout(typeChar, 25); 
+    } else {
+      cursor.remove(); 
+      cLog.unshift({ seat:line.seat, cs:line.cs, msg:line.msg, type:line.type, t });
+      if (cLog.length > 100) cLog.pop();
+      
+      // ATC 停頓 0.8秒，機長停頓 0.2秒
+      const pause = line.type === 'atc' ? 800 : 200;
+      setTimeout(() => { playLines(lines, idx + 1, onComplete); }, pause);
+    }
+  }
+  typeChar();
+}
+
+function fSeat(s){
+  cFilt=s;
+  document.querySelectorAll('.stab').forEach(t=>{ t.classList.toggle('on', t.textContent===s); });
+  Array.from(document.getElementById('clog').children).forEach(el => {
+    const seat = el.dataset.seat;
+    if (seat) el.style.display = (s === 'ALL' || seat === s) ? 'flex' : 'none';
+  });
+}
+
+// ════════════════════════════════════════════
+// PHYSICS UPDATE
+// ════════════════════════════════════════════
+function update(dt){
+  gTime+=dt;
+  Object.values(ACs).forEach(ac=>{upAC(ac,dt); chkProx(ac);});
+}
+
+function upAC(ac,dt){
+  // If talking, aircraft does not move to next phase (simulating real communication delay)
+  if(ac.isTalking && ac.state !== 'TAKEOFF_ROLL' && ac.state !== 'AIRBORNE') return;
+
+  switch(ac.state){
+    case 'TAXIING_OUT': case 'TAXIING_IN': moveTaxi(ac,dt); break;
+    case 'TAKEOFF_ROLL': ac.gSpd += 8*dt; if(ac.assignedRwy==='06'){ ac.gx+=ac.gSpd*dt; if(ac.gx>RWY_LEN*0.5) toAirborne(ac); } else { ac.gx-=ac.gSpd*dt; if(ac.gx<RWY_LEN*0.5) toAirborne(ac); } break;
+    case 'INBOUND': case 'SEQUENCING': case 'FINAL_APPROACH': case 'AIRBORNE': moveAir(ac,dt); break;
+  }
+}
+
+function toAirborne(ac){ ac.state='AIRBORNE'; ac.ax=0; ac.ay=0; ac.aHdg=(ac.assignedRwy==='06')?90:270; ac.aSpd=160; ac.altitude=200; ac.targetAlt=ac.fl*100; }
+function moveTaxi(ac,dt){ 
+  if(ac.holdShort||ac.taxiIdx>=ac.taxiRoute.length){ 
+    if(!ac.holdShort&&ac.state==='TAXIING_OUT') ac.state='HOLD_SHORT'; 
+    if(!ac.holdShort&&ac.state==='TAXIING_IN') ac.state='AWAIT_GATE'; 
+    ac.gSpd=0; return; 
+  } 
+  const tgt=ac.taxiRoute[ac.taxiIdx]; const dx=tgt.x-ac.gx, dy=tgt.y-ac.gy; const dist=Math.sqrt(dx*dx+dy*dy); const spd=12; 
+  if(dist<spd*dt){ac.gx=tgt.x;ac.gy=tgt.y;ac.taxiIdx++;} 
+  else{ac.gx+=dx/dist*spd*dt;ac.gy+=dy/dist*spd*dt;ac.gHdg=Math.atan2(dx,-dy)*180/Math.PI;if(ac.gHdg<0)ac.gHdg+=360; ac.gSpd=spd;} 
+}
+function moveAir(ac,dt){ 
+  if(ac.targetHdg!==null){ let d=ac.targetHdg-ac.aHdg; while(d>180)d-=360;while(d<-180)d+=360; const tr=3; if(Math.abs(d)<tr*dt)ac.aHdg=ac.targetHdg; else ac.aHdg+=Math.sign(d)*tr*dt; } 
+  if(ac.targetAlt!==undefined){ const d=ac.targetAlt-ac.altitude, vs=1500/60; if(Math.abs(d)<vs*dt)ac.altitude=ac.targetAlt; else ac.altitude+=Math.sign(d)*vs*dt; } 
+  const rad=(ac.aHdg-90)*Math.PI/180; const nms=ac.aSpd/3600; ac.ax+=Math.cos(rad)*nms*dt; ac.ay-=Math.sin(rad)*nms*dt; 
+  
+  if(ac.state==='FINAL_APPROACH'&&ac.clearedILS){ 
+    const dist=Math.sqrt(ac.ax*ac.ax+ac.ay*ac.ay); ac.altitude=Math.max(0,dist*310); 
+    if(dist<0.1){
+      ac.assignedRwy==='06'? (ac.gx=CX.E1,ac.gHdg=270):(ac.gx=CX.W2,ac.gHdg=90); 
+      ac.gy=0; ac.gSpd=0; ac.state='TAXIING_IN';
+      
+      ac.isTalking=true;
+      queueComms([
+        {seat:'TWR', cs:ac.callsign, msg:`${ac.callsign}，接地，脫離跑道後聯繫地面121.7。`, type:'atc'},
+        {seat:'AC', cs:ac.callsign, msg:`聯繫地面121.7，${ac.callsign}。`, type:'ac'}
+      ], () => { ac.isTalking=false; ac.taxiRoute=[{x:ac.gx,y:TWY_Y}]; ac.taxiIdx=0; ac.holdShort=false; });
+    }
+  }
+}
+function chkProx(ac){ 
+  if(isGnd(ac.state))return; 
+  Object.values(ACs).forEach(o=>{ 
+    if(o.id===ac.id||isGnd(o.state))return; 
+    const dx=ac.ax-o.ax,dy=ac.ay-o.ay, d=Math.sqrt(dx*dx+dy*dy), alt=Math.abs(ac.altitude-o.altitude); 
+    if(d<1.5&&alt<500){ if(!ac.isTalking) queueComms([{seat:'APP', cs:ac.callsign, msg:`緊急！TCAS RA，${ac.callsign}，避讓${o.callsign}。`, type:'atc'}], null); } 
+  }); 
+}
+
+// ════════════════════════════════════════════
+// COMMANDS
+// ════════════════════════════════════════════
+function getCmds(ac){
+  if(ac.isTalking) return [{l:'(通訊中...)', a:'NONE'}];
+  
+  const c=[];
+  if(ac.isArrival){
+    switch(ac.state){
+      case 'INBOUND': c.push({l:'下 3000ft (ILS)',a:'ILS_APP'});break;
+      case 'FINAL_APPROACH': c.push({l:'降落許可',a:'LND'},{l:'重飛',a:'GAR'});break;
+      case 'AWAIT_GATE': 
+        if(ac.cat==='COM') c.push({l:'滑行至 N1',a:'GN1'},{l:'滑行至 N2',a:'GN2'});
+        else c.push({l:'滑行至 M1',a:'GM1'});
+        break;
+    }
+  } else {
+    switch(ac.state){
+      case 'PARKED': c.push({l:'1.出發許可',a:'CLR'}); break;
+      case 'CLEARED': c.push({l:'2.許可後推',a:'PBK'}); break;
+      case 'PUSHED': c.push({l:'3.滑行 06',a:'T_06'}, {l:'3.滑行 24',a:'T_24'}); break;
+      case 'TAXIING_OUT': c.push({l:'停止',a:'HLD'},{l:'繼續',a:'RSM'}); break;
+      case 'HOLD_SHORT': c.push({l:'4.進跑道等待',a:'LUP'},{l:'4.起飛許可',a:'TOF'}); break;
+      case 'LINEUP_WAIT': c.push({l:'4.起飛許可',a:'TOF'}); break;
+      case 'AIRBORNE': if(ac.altitude>1000) c.push({l:'5.移交近場',a:'HOF'}); break;
+    }
+  }
+  return c;
+}
+
+function execCmd(ac,a){
+  if (a === 'NONE') return;
+  const cs=ac.callsign, rwy=ac.assignedRwy||'06';
+  hidePop();
+  ac.isTalking = true; // 鎖定動作直到對話結束
+  
+  switch(a){
+    case 'CLR': 
+      queueComms([
+        {seat:'DEL', cs, msg:`${cs}，出發許可，目的地${ac.destination}，爬升FL${ac.fl}，離場程序${rwy}D，應答機A3301。`, type:'atc'},
+        {seat:'AC', cs, msg:`收到許可，${cs}。`, type:'ac'}
+      ], () => { ac.isTalking=false; ac.state='CLEARED'; updateUI();}); break;
+    case 'PBK': 
+      queueComms([
+        {seat:'GND', cs, msg:`${cs}，後推及開車許可，面對東。`, type:'atc'},
+        {seat:'AC', cs, msg:`後推開車，${cs}。`, type:'ac'}
+      ], () => { ac.isTalking=false; ac.state='PUSHED'; ac.gy += 40; updateUI();}); break;
+    case 'T_06':
+      queueComms([
+        {seat:'GND', cs, msg:`${cs}，滑行至 06 跑道外等待。`, type:'atc'},
+        {seat:'AC', cs, msg:`滑行至 06 跑道外，${cs}。`, type:'ac'}
+      ], () => { ac.isTalking=false; ac.assignedRwy='06'; ac.state='TAXIING_OUT'; ac.gSpd=4; ac.taxiRoute=[{x:ac.gx,y:TWY_Y},{x:HOLD_06.x,y:TWY_Y},{x:HOLD_06.x,y:HOLD_06.y}]; ac.taxiIdx=0; updateUI();}); break;
+    case 'T_24':
+      queueComms([
+        {seat:'GND', cs, msg:`${cs}，滑行至 24 跑道外等待。`, type:'atc'},
+        {seat:'AC', cs, msg:`滑行至 24 跑道外，${cs}。`, type:'ac'}
+      ], () => { ac.isTalking=false; ac.assignedRwy='24'; ac.state='TAXIING_OUT'; ac.gSpd=4; ac.taxiRoute=[{x:ac.gx,y:TWY_Y},{x:HOLD_24.x,y:TWY_Y},{x:HOLD_24.x,y:HOLD_24.y}]; ac.taxiIdx=0; updateUI();}); break;
+    case 'HLD': 
+      queueComms([{seat:'GND', cs, msg:`${cs}，原地等待。`, type:'atc'}, {seat:'AC', cs, msg:`等待，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.holdShort=true; }); break;
+    case 'RSM': 
+      queueComms([{seat:'GND', cs, msg:`${cs}，繼續滑行。`, type:'atc'}, {seat:'AC', cs, msg:`繼續，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.holdShort=false; }); break;
+    case 'LUP': 
+      queueComms([{seat:'TWR', cs, msg:`${cs}，進入跑道${rwy}並等待。`, type:'atc'}, {seat:'AC', cs, msg:`進入跑道${rwy}等待，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.state='LINEUP_WAIT'; ac.gx=(rwy==='06'?0:RWY_LEN); ac.gy=0; ac.gHdg=(rwy==='06'?90:270); ac.waitTimer=0; updateUI();}); break;
+    case 'TOF': 
+      queueComms([{seat:'TWR', cs, msg:`${cs}，跑道${rwy}，風向050/12KT，起飛許可。`, type:'atc'}, {seat:'AC', cs, msg:`起飛，跑道${rwy}，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.state='TAKEOFF_ROLL'; ac.gx=(rwy==='06'?0:RWY_LEN); ac.gy=0; ac.gHdg=(rwy==='06'?90:270); ac.gSpd=5; updateUI();}); break;
+    case 'HOF': 
+      queueComms([{seat:'TWR', cs, msg:`${cs}，聯繫近場臺 119.1，再見。`, type:'atc'}, {seat:'AC', cs, msg:`119.1，再見，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.state='DEPARTED'; updateUI();}); break;
+    case 'ILS_APP': 
+      queueComms([{seat:'APP', cs, msg:`${cs}，下降並維持3000呎，許可ILS進場跑道06。`, type:'atc'}, {seat:'AC', cs, msg:`許可ILS 06，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.state='FINAL_APPROACH'; ac.targetAlt=3000; ac.targetHdg=90; ac.clearedILS=true; ac.ax=-12; ac.ay=0; updateUI();}); break;
+    case 'LND': 
+      queueComms([{seat:'TWR', cs, msg:`${cs}，跑道06，風向050/12KT，降落許可。`, type:'atc'}, {seat:'AC', cs, msg:`降落許可，${cs}。`, type:'ac'}], () => { ac.isTalking=false; }); break;
+    case 'GAR': 
+      queueComms([{seat:'TWR', cs, msg:`${cs}，重飛，重飛，上升3000呎，保持跑道航向。`, type:'atc'}, {seat:'AC', cs, msg:`重飛，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.state='SEQUENCING'; ac.clearedILS=false; ac.targetAlt=3000; ac.aSpd=200; updateUI();}); break;
+    case 'GN1': case 'GN2': case 'GM1':
+      const gateMap = {'GN1': GATES_COM[0], 'GN2': GATES_COM[1], 'GM1': GATES_MIL[0]}; const gObj = gateMap[a];
+      queueComms([{seat:'GND', cs, msg:`${cs}，滑行道P1，機坪${gObj.id}。`, type:'atc'}, {seat:'AC', cs, msg:`P1，${gObj.id}，${cs}。`, type:'ac'}], () => { ac.isTalking=false; ac.state='TAXIING_IN'; ac.taxiRoute=[{x:ac.gx, y:TWY_Y}, {x:gObj.x, y:gObj.y}]; ac.taxiIdx=0; ac.holdShort=false; updateUI();}); break;
+  }
+  updateUI();
+}
+
+// ════════════════════════════════════════════
+// CLICK & POPUP (點擊雷達跳出選單)
+// ════════════════════════════════════════════
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect(); const mx=e.clientX-r.left, my=e.clientY-r.top; 
+  let found=null;
+  Object.values(ACs).forEach(ac=>{
+    if(ac.state==='DEPARTED') return;
+    let p = isGnd(ac.state)?m2c(ac.gx,ac.gy):nm2c(ac.ax,ac.ay);
+    if(Math.sqrt((mx-p.x)**2+(my-p.y)**2)<25) found=ac;
+  });
+  if(found){ 
+    sel=found.id; 
+    showPop(found, isGnd(found.state)?m2c(found.gx,found.gy).x:nm2c(found.ax,found.ay).x, isGnd(found.state)?m2c(found.gx,found.gy).y:nm2c(found.ax,found.ay).y); 
+  } else { sel=null; hidePop(); }
+  updateUI();
+});
+
+function showPop(ac,mx,my){
+  const pop=document.getElementById('pop');
+  document.getElementById('pt').textContent=`${ac.callsign} · ${ac.type}`;
+  document.getElementById('psub').textContent=`${ac.airline} · ${isGnd(ac.state)?'GND':Math.round(ac.altitude)+'ft'}`;
+  const pb=document.getElementById('pb'); pb.innerHTML='';
+  getCmds(ac).forEach(cmd=>{
+    const b=document.createElement('button'); b.textContent=cmd.l; 
+    if(cmd.a==='NONE') b.disabled=true; else b.onclick=()=>execCmd(ac,cmd.a); 
+    pb.appendChild(b);
+  });
+  
+  let px=mx+15, py=my+15;
+  if(px+200 > cW) px=mx-205;
+  if(py+220 > cH) py=my-230;
+  pop.style.left=px+'px'; pop.style.top=py+'px'; pop.classList.add('on');
+}
+function hidePop(){document.getElementById('pop').classList.remove('on');}
+
+// ════════════════════════════════════════════
+// UI UPDATE (右側卡片連動)
+// ════════════════════════════════════════════
+function updateUI(){
+  const h=Math.floor(gTime/3600),m=Math.floor((gTime%3600)/60),s=Math.floor(gTime%60);
+  document.getElementById('clock').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+  const depList=document.getElementById('list-dep'); const arrList=document.getElementById('list-arr');
+  depList.innerHTML=''; arrList.innerHTML='';
+
+  Object.values(ACs).forEach(ac=>{
+    if(ac.state==='DEPARTED') return;
+    const isArr = ac.isArrival;
+    const div=document.createElement('div');
+    div.className='fi'+(ac.id===sel?' sel':'');
+    const bc=isGnd(ac.state)?(ac.state==='LINEUP_WAIT'?'br':'bg'):(ac.state==='FINAL_APPROACH'?'bp':'ba');
+    const routeTxt=isArr?`由 ${ac.origin}`:`往 ${ac.destination}`;
+    
+    div.innerHTML=`
+      <div class="cs">${ac.callsign}<span class="badge ${bc}">${stateS(ac.state)}</span></div>
+      <div class="dt">${ac.type} · ${isGnd(ac.state)?'GND':Math.round(ac.altitude)+'ft'}</div>
+      <div class="rte ${isArr?'rte-arr':'rte-dep'}">${routeTxt}</div>`;
+    
+    // 點擊右側卡片，自動切換視角並在雷達上彈出選單
+    div.onclick=()=>{
+      sel=ac.id; 
+      setView(isGnd(ac.state)?'ground':'air');
+      const p = isGnd(ac.state) ? m2c(ac.gx,ac.gy) : nm2c(ac.ax,ac.ay);
+      showPop(ac, p.x, p.y);
+      updateUI();
+    }; 
+    (isArr?arrList:depList).appendChild(div);
+  });
+
+  document.getElementById('acc').textContent='TRAFFIC: '+Object.values(ACs).filter(a=>a.state!=='DEPARTED').length;
+}
+
+function stateS(s){ return {PARKED:'停泊',CLEARED:'許可已頒',PUSHED:'已後推',TAXIING_OUT:'滑行中',HOLD_SHORT:'跑道外',LINEUP_WAIT:'跑道內',TAKEOFF_ROLL:'起飛滾行',AIRBORNE:'爬升中',INBOUND:'進場中',SEQUENCING:'引導排序',FINAL_APPROACH:'最後進場',TAXIING_IN:'落地滑行',AWAIT_GATE:'等待滑行'}[s]||s; }
+
+// ════════════════════════════════════════════
+// SPAWN & MAIN LOOP
+// ════════════════════════════════════════════
+function setView(v){ view=v; document.getElementById('btn-g').classList.toggle('on',v==='ground'); document.getElementById('btn-a').classList.toggle('on',v==='air'); hidePop(); }
+
+function spawnInitial(){
+  resize();
+  ACs['AC1']=makeAC({state:'PARKED',gate:'N1',cat:'COM',type:'ATR 72-600',callsign:'B78642',airline:'立榮航空'});
+  ACs['AC2']=makeAC({state:'PARKED',gate:'M1',cat:'MIL',type:'C-130H',callsign:'ROCAF1352',airline:'中華民國空軍'});
+  ACs['AC3']=makeAC({state:'FINAL_APPROACH',ax:8,ay:0,aHdg:270,aSpd:155, altitude:2500,targetAlt:0,cat:'COM',type:'A321-200',callsign:'AE1231',clearedILS:true,origin:'松山', isArrival: true});
+
+  // 第一班飛機通訊
+  ACs['AC3'].isTalking = true;
+  setTimeout(()=>{ 
+    queueComms([
+      {seat:'APP', cs:ACs['AC3'].callsign, msg:`${ACs['AC3'].callsign}，雷達識別，許可ILS進場跑道06。`, type:'atc'},
+      {seat:'AC', cs:ACs['AC3'].callsign, msg:`ILS跑道06，${ACs['AC3'].callsign}。`, type:'ac'}
+    ], () => { ACs['AC3'].isTalking = false; updateUI(); });
+  }, 1000);
+}
+
+function maybeSpawn(){
+  if(gTime-lastSpawn<150 || Object.values(ACs).filter(a=>a.state!=='DEPARTED').length>=8)return;
+  lastSpawn=gTime;
+  const ac=makeAC({state:'INBOUND', ax:20+Math.random()*4, ay:rI(-4,4), aHdg:255+rI(-15,15), aSpd:240+rI(0,70), altitude:7000+rI(0,4000), targetAlt:9000, isArrival: true});
+  ACs[ac.id]=ac;
+  ac.isTalking = true;
+  queueComms([
+    {seat:'APP', cs:ac.callsign, msg:`${ac.callsign}，進近管制，雷達識別，下降並維持9000呎。`, type:'atc'},
+    {seat:'AC', cs:ac.callsign, msg:`下降9000呎，${ac.callsign}。`, type:'ac'}
+  ], () => { ac.isTalking = false; updateUI(); });
+}
+
+function cleanup(){
+  Object.values(ACs).forEach(ac=>{
+    if(ac.state==='DEPARTED' && (Math.abs(ac.ax)>45 || Math.abs(ac.ay)>45)) { delete ACs[ac.id]; if(sel===ac.id) sel=null; }
+    if(isGnd(ac.state)) return;
+    if(Math.abs(ac.ax)>45||Math.abs(ac.ay)>45){ delete ACs[ac.id]; if(sel===ac.id) sel=null; }
+  });
+}
+
+// 確保 CSS 載入後再初始化畫面
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    spawnInitial(); 
+    updateUI();
+  }, 100);
+});
+
+let lastT=0;
+function loop(ts){
+  const dt=(ts-lastT)/1000; lastT=ts;
+  if(dt>0&&dt<0.5){update(dt*GAME_SPEED); maybeSpawn(); cleanup();}
+  render(); requestAnimationFrame(loop);
+}
+requestAnimationFrame(ts=>{lastT=ts; requestAnimationFrame(loop);});
+</script>
+</body>
+</html>
